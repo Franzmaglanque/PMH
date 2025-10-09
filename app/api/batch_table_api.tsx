@@ -32,7 +32,8 @@ export const fetchBatchRecords = async () => {
                 },
             });
 
-        return response.json();
+        const result = await response.json();
+        return result.data;
 
     } catch (error) {
         console.log(error);
