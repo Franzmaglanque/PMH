@@ -1,6 +1,6 @@
 import { Box } from '@mantine/core';
 
-export default function LoginLayout({ children }: { children: React.ReactNode }) {
+export default function AuthLayout({ children }: { children: React.ReactNode }) {
   return (
     <Box
       style={{

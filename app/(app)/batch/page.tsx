@@ -4,7 +4,7 @@ import { Container, Title, Button, TextInput, Select, Table, Text, Group, Action
 import { IconPlus, IconSearch, IconChevronDown } from '@tabler/icons-react';
 import { useState } from 'react';
 import { useQuery } from "@tanstack/react-query";
-import { fetchBatchRecords } from '../api/batch_table_api';
+import { fetchBatchRecords } from '../../api/batch_table_api';
 import 'mantine-datatable/styles.css';
 import { DataTable } from 'mantine-datatable';
 

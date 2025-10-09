@@ -18,7 +18,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { loginSchema, LoginInput } from '../../lib/schemas/auth.schema'
+import { loginSchema, LoginInput } from '../../../lib/schemas/auth.schema'
 
 export default function LoginPage() {
   const [loading, setLoading] = useState(false);

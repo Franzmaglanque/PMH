@@ -1,5 +1,3 @@
-// app/layout.js
-
 import { MantineProvider } from '@mantine/core';
 import '@mantine/core/styles.css'; // Don't forget Mantine styles
 import MainLayout from '../components/Layout/MainLayout'; // Import your new layout
@@ -15,11 +13,9 @@ export default function RootLayout({ children }: React.PropsWithChildren) {
         {/* Wrap your entire application with MantineProvider */}
         <MantineProvider>
           {/* Wrap the content (children) with your custom layout */}
-          <MainLayout>
             <Providers>
               {children}
             </Providers>
-          </MainLayout>
         </MantineProvider>
       </body>
     </html>
