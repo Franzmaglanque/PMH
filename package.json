@@ -20,6 +20,7 @@
     "storybook:build": "storybook build"
   },
   "dependencies": {
+    "@hookform/resolvers": "^5.2.2",
     "@mantine/core": "8.3.3",
     "@mantine/hooks": "8.3.3",
     "@next/bundle-analyzer": "^15.5.4",
@@ -28,7 +29,9 @@
     "mantine-datatable": "^8.2.0",
     "next": "15.5.4",
     "react": "19.1.1",
-    "react-dom": "19.1.1"
+    "react-dom": "19.1.1",
+    "react-hook-form": "^7.64.0",
+    "zod": "^4.1.12"
   },
   "devDependencies": {
     "@babel/core": "^7.28.4",
