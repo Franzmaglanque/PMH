@@ -42,37 +42,41 @@ export default function LoginPage() {
   const onSubmit = async (values: LoginInput) => {
     setLoading(true);
     console.log(values);
-    // try {
-    //   const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/login`, {
-    //     method: 'POST',
-    //     headers: {
-    //       'Content-Type': 'application/json',
-    //     },
-    //     body: JSON.stringify({
-    //       email: values.email,
-    //       password: values.password,
-    //     }),
-    //   });
+    try {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/login`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        },
+        credentials: 'include',
+        body: JSON.stringify({
+          email: values.email,
+          password: values.password,
+        }),
+      });
 
-    //   const data = await response.json();
+      const data = await response.json();
+      console.log(data);
+      console.log('response',response);
 
-    //   if (response.ok) {
-    //     localStorage.setItem('token', data.token);
-    //     router.push('/batch');
-    //   } else {
-    //     setError('email', { 
-    //       type: 'manual', 
-    //       message: data.message || 'Login failed' 
-    //     });
-    //   }
-    // } catch (error) {
-    //   setError('email', { 
-    //     type: 'manual', 
-    //     message: 'Something went wrong. Please try again.' 
-    //   });
-    // } finally {
-    //   setLoading(false);
-    // }
+      // if (response.ok) {
+      //   localStorage.setItem('token', data.token);
+      //   router.push('/batch');
+      // } else {
+      //   setError('email', { 
+      //     type: 'manual', 
+      //     message: data.message || 'Login failed' 
+      //   });
+      // }
+    } catch (error) {
+      setError('email', { 
+        type: 'manual', 
+        message: 'Something went wrong. Please try again.' 
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
