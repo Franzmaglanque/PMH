@@ -31,6 +31,7 @@ export default function LoginPage() {
     handleSubmit,
     control,
     setError,
+    reset,
     formState: { errors },
   } = useForm<LoginInput>({
     resolver: zodResolver(loginSchema),
@@ -43,7 +44,6 @@ export default function LoginPage() {
 
   const onSubmit = async (values: LoginInput) => {
     setLoading(true);
-    console.log(values);
     try {
       const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/login`, {
         method: 'POST',
@@ -59,36 +59,28 @@ export default function LoginPage() {
       });
 
       const data = await response.json();
-      console.log(data);
-      console.log('response',response);
-      // notifications.show({
-      //   title: 'Default notification',
-      //   message: 'Do not forget to star Mantine on GitHub! 🌟',
-      // })
-      showSuccessNotification(
-        'Welcome back!',
-        data.message || 'Login successful. Redirecting to your dashboard...'
-      );
+      console.log(response);
 
-      showErrorNotification(
-        'Welcome back!',
-        data.message || 'Login successful. Redirecting to your dashboard...'
-      );
-
-      // if (response.ok) {
-      //   localStorage.setItem('token', data.token);
-      //   router.push('/batch');
-      // } else {
-      //   setError('email', { 
-      //     type: 'manual', 
-      //     message: data.message || 'Login failed' 
-      //   });
-      // }
+      if (response.ok) {
+        showSuccessNotification(
+          'Login Success',
+          'credentials authenticated'
+        );
+      } else {
+        showErrorNotification(
+          'Login Failed',
+          'Incorrect credentials'
+        );
+        reset({
+          email: values.email, // Keep the email they entered
+          password: '', // Clear the password
+        });
+      }
     } catch (error) {
-      setError('email', { 
-        type: 'manual', 
-        message: 'Something went wrong. Please try again.' 
-      });
+      // setError('email', { 
+      //   type: 'manual', 
+      //   message: 'Something went wrong. Please try again.' 
+      // });
     } finally {
       setLoading(false);
     }
