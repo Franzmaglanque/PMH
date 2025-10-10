@@ -2,6 +2,7 @@ import { MantineProvider } from '@mantine/core';
 import '@mantine/core/styles.css'; // Don't forget Mantine styles
 import MainLayout from '../components/Layout/MainLayout'; // Import your new layout
 import { Providers } from './providers';
+import '@mantine/notifications/styles.css'; // This line is critical
 
 export default function RootLayout({ children }: React.PropsWithChildren) {
   return (

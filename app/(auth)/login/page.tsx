@@ -19,6 +19,8 @@ import { z } from 'zod';
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { loginSchema, LoginInput } from '../../../lib/schemas/auth.schema'
+import { showSuccessNotification, showErrorNotification, showWarningNotification } from '@/lib/notifications';
+
 
 export default function LoginPage() {
   const [loading, setLoading] = useState(false);
@@ -59,6 +61,19 @@ export default function LoginPage() {
       const data = await response.json();
       console.log(data);
       console.log('response',response);
+      // notifications.show({
+      //   title: 'Default notification',
+      //   message: 'Do not forget to star Mantine on GitHub! 🌟',
+      // })
+      showSuccessNotification(
+        'Welcome back!',
+        data.message || 'Login successful. Redirecting to your dashboard...'
+      );
+
+      showErrorNotification(
+        'Welcome back!',
+        data.message || 'Login successful. Redirecting to your dashboard...'
+      );
 
       // if (response.ok) {
       //   localStorage.setItem('token', data.token);
