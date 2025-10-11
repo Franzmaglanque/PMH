@@ -36,7 +36,7 @@ export default function LoginPage() {
   } = useForm<LoginInput>({
     resolver: zodResolver(loginSchema),
     defaultValues: {
-      email: '',
+      login: '',
       password: '',
       rememberMe: false,
     },
@@ -53,7 +53,7 @@ export default function LoginPage() {
         },
         credentials: 'include',
         body: JSON.stringify({
-          email: values.email,
+          login: values.login,
           password: values.password,
         }),
       });
@@ -72,7 +72,7 @@ export default function LoginPage() {
           'Incorrect credentials'
         );
         reset({
-          email: values.email, // Keep the email they entered
+          login: values.login, // Keep the email they entered
           password: '', // Clear the password
         });
       }
@@ -102,11 +102,11 @@ export default function LoginPage() {
         <form onSubmit={handleSubmit(onSubmit)}>
           <Stack>
             <TextInput
-              label="Email"
-              placeholder="you@example.com"
+              label="Login"
+              // placeholder="you@example.com"
               required
-              {...register('email')}
-              error={errors.email?.message}
+              {...register('login')}
+              error={errors.login?.message}
             />
 
             <PasswordInput
