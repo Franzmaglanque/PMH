@@ -59,9 +59,26 @@ export default function LoginPage() {
       });
 
       const data = await response.json();
+
+
       console.log(response);
 
       if (response.ok) {
+
+        if (data.token) {
+          // Store the full token in localStorage for easy client-side access
+          // Your React components can read this to make authenticated API requests
+          localStorage.setItem('token', data.token);
+          
+          // Also store user information so your UI can display user details
+          // without making an additional API request
+          localStorage.setItem('user', JSON.stringify(data.user));
+          
+          // Store the token in a cookie for middleware to check authentication
+          // This is what your middleware.ts will read to protect routes
+          const maxAge = values.rememberMe ? 60 * 60 * 24 * 7 : 60 * 60 * 24; // 7 days or 1 day
+          document.cookie = `auth_token=${data.token}; path=/; max-age=${maxAge}; SameSite=Lax; Secure`;
+        }
         showSuccessNotification(
           'Login Success',
           'credentials authenticated'

@@ -27,6 +27,8 @@
     "@next/bundle-analyzer": "^15.5.4",
     "@tabler/icons-react": "^3.35.0",
     "@tanstack/react-query": "^5.90.2",
+    "@types/lodash": "^4.17.20",
+    "lodash": "^4.17.21",
     "mantine-datatable": "^8.2.0",
     "next": "15.5.4",
     "react": "19.1.1",
