@@ -6,7 +6,7 @@ export const fetchBatchRecords_post = async (params: any) => {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
-                "x-account-session-token": params.token
+                "Authorization": `Bearer ${params.token}`
             },
             body: JSON.stringify({
                 customer_entity: params.entity_id,
@@ -53,7 +53,7 @@ export const generateBatch = async (requestType: string) => {
             headers: {
                 'Content-Type': 'application/json',
                 'Accept': 'application/json',
-                'x-account-session-token': token || '',
+                'Authorization': `Bearer ${token}`,
             },
             body: JSON.stringify({
                 request_type: requestType,

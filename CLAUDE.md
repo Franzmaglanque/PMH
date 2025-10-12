@@ -57,12 +57,15 @@ The application uses Next.js 15 App Router with route groups for layout separati
 
 ### Authentication Flow
 
+- **Backend Cookie Approach**: Laravel API sets HttpOnly cookies for security
 - Login credentials sent to `${NEXT_PUBLIC_API_URL}/login` endpoint
 - Successful login stores:
-  - Token in localStorage for client-side API requests
-  - User object in localStorage
-  - Token in cookie for middleware authentication checks
-- Cookie max-age: 7 days if "Remember me" checked, 1 day otherwise
+  - Token in localStorage for API requests (sent via `Authorization: Bearer {token}` header)
+  - User object in localStorage for UI display
+  - HttpOnly cookie set by backend for session management
+- Cookie duration: 7 days if "Remember me" checked, 1 day otherwise
+- Logout endpoint (`/logout`) requires `auth:sanctum` middleware
+- Uses standard OAuth Bearer token authentication via `Authorization` header
 - Separate registration schemas for employees (category, position) vs suppliers (supplierCode)
 
 ### Form Validation
@@ -77,8 +80,13 @@ All form validation uses Zod schemas located in `lib/schemas/auth.schema.tsx`:
 
 - API base URL configured via `NEXT_PUBLIC_API_URL` environment variable (default: http://localhost:8000/api)
 - API functions located in `app/api/` directory
-- Batch records fetched via `fetchBatchRecords()` and `fetchBatchRecords_post()`
-- Authentication headers use `x-account-session-token` for authenticated requests
+- All authenticated requests use standard `Authorization: Bearer {token}` header
+- Token retrieved from localStorage before each request
+- Batch management APIs:
+  - `generateBatch(requestType)` - Creates new batch with supplier code
+  - `validateBarcode(upc, batchNumber)` - Validates product barcode
+  - `fetchBatchRecordsById(batchNumber)` - Fetches records for specific batch
+- Credentials included in requests via `credentials: 'include'` for cookie handling
 
 ### UI Components
 
@@ -86,11 +94,32 @@ All form validation uses Zod schemas located in `lib/schemas/auth.schema.tsx`:
 - **Mantine Notifications** - Toast notifications positioned bottom-right
 - **Mantine DataTable** - Data table component with sorting, pagination, styling
 - **Tabler Icons** - Icon library (@tabler/icons-react)
-- Custom notification wrapper in `lib/notifications.tsx` provides:
+
+### Helper Libraries
+
+All helper functions are located in `lib/` directory for reusability:
+
+- **`lib/notifications.tsx`** - Notification wrappers:
   - `showSuccessNotification()` - Green, 3s auto-close
   - `showErrorNotification()` - Red, 5s auto-close
   - `showWarningNotification()` - Orange, 6s auto-close
   - `showInfoNotification()` - Blue, 4s auto-close
+
+- **`lib/debounce.ts`** - Debounce utilities using lodash:
+  - `useDebouncedInput(onValueChange, delay)` - Debounced input handler (default 800ms)
+  - `useDebouncedCallback(callback, delay)` - Debounced callback hook
+  - `createDebounce(delay)` - Factory function for custom debounce
+
+- **`lib/inputHelpers.ts`** - Input validation helpers:
+  - `useNumericInput(onChange)` - Restricts input to numeric characters only
+  - `useNumericInputWithMaxLength(onChange, maxLength)` - Numeric with length limit
+  - Returns `{ onChange, onKeyPress }` handlers for TextInput
+
+- **`lib/dataTableHelper.tsx`** - Reusable DataTable components:
+  - `StyledDataTable` - Full-featured table with Paper wrapper, title, record count badge
+  - `SimpleDataTable` - Basic table without wrapper for custom layouts
+  - `createBadgeRenderer(accessor, color, variant)` - Utility for badge columns
+  - `createActionColumn(actions)` - Utility for action button columns
 
 ### Styling
 

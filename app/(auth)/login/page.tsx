@@ -51,53 +51,53 @@ export default function LoginPage() {
           'Content-Type': 'application/json',
           'Accept': 'application/json'
         },
-        credentials: 'include',
+        credentials: 'include', // IMPORTANT: Allows cookies to be set and sent
         body: JSON.stringify({
           login: values.login,
           password: values.password,
+          rememberMe: values.rememberMe, // Send to backend for cookie duration
         }),
       });
 
       const data = await response.json();
 
+      if (response.ok && data.status) {
+        // Cookie is already set by Laravel backend with HttpOnly flag
+        // No need for: document.cookie = ...
 
-      console.log(response);
-
-      if (response.ok) {
-
+        // Store token in localStorage for API requests (header: x-account-session-token)
         if (data.token) {
-          // Store the full token in localStorage for easy client-side access
-          // Your React components can read this to make authenticated API requests
           localStorage.setItem('token', data.token);
-          
-          // Also store user information so your UI can display user details
-          // without making an additional API request
-          localStorage.setItem('user', JSON.stringify(data.user));
-          
-          // Store the token in a cookie for middleware to check authentication
-          // This is what your middleware.ts will read to protect routes
-          const maxAge = values.rememberMe ? 60 * 60 * 24 * 7 : 60 * 60 * 24; // 7 days or 1 day
-          document.cookie = `auth_token=${data.token}; path=/; max-age=${maxAge}; SameSite=Lax; Secure`;
         }
+
+        // Store user information for UI display
+        if (data.user) {
+          localStorage.setItem('user', JSON.stringify(data.user));
+        }
+
         showSuccessNotification(
           'Login Success',
-          'credentials authenticated'
+          data.message || 'Credentials authenticated'
         );
+
+        // Redirect to dashboard or intended page
+        router.push('/batch');
       } else {
         showErrorNotification(
           'Login Failed',
-          'Incorrect credentials'
+          data.message || 'Incorrect credentials'
         );
         reset({
-          login: values.login, // Keep the email they entered
+          login: values.login, // Keep the login they entered
           password: '', // Clear the password
         });
       }
     } catch (error) {
-      // setError('email', { 
-      //   type: 'manual', 
-      //   message: 'Something went wrong. Please try again.' 
-      // });
+      showErrorNotification(
+        'Error',
+        'Something went wrong. Please try again.'
+      );
+      console.error('Login error:', error);
     } finally {
       setLoading(false);
     }

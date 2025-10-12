@@ -27,15 +27,94 @@ import {
   IconChartBar,
 } from '@tabler/icons-react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
-// import { logout } from '@/lib/auth';
+import { usePathname, useRouter } from 'next/navigation';
+import { useState, useEffect } from 'react';
+import { showSuccessNotification, showErrorNotification } from '@/lib/notifications';
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const [opened, { toggle }] = useDisclosure();
   const pathname = usePathname();
+  const router = useRouter();
+  const [user, setUser] = useState<any>(null);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
+
+  // Load user from localStorage on mount
+  useEffect(() => {
+    const userString = localStorage.getItem('user');
+    if (userString) {
+      setUser(JSON.parse(userString));
+    }
+  }, []);
 
   // Check if a nav item is active based on current path
   const isActive = (path: string) => pathname === path || pathname.startsWith(path + '/');
+
+  // Handle logout
+  const handleLogout = async () => {
+    setIsLoggingOut(true);
+    try {
+      const token = localStorage.getItem('token');
+
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/logout`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        credentials: 'include', // Important for cookie handling
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.status) {
+        // Clear localStorage
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+
+        showSuccessNotification(
+          'Logout Successful',
+          data.message || 'You have been logged out successfully'
+        );
+
+        // Redirect to login page
+        router.push('/login');
+      } else {
+        showErrorNotification(
+          'Logout Failed',
+          data.message || 'Failed to logout'
+        );
+      }
+    } catch (error) {
+      showErrorNotification(
+        'Error',
+        'Something went wrong during logout'
+      );
+      console.error('Logout error:', error);
+    } finally {
+      setIsLoggingOut(false);
+    }
+  };
+
+  // Get user initials for avatar
+  const getUserInitials = () => {
+    if (!user) return 'JD';
+    const firstName = user.first_name || user.name?.split(' ')[0] || 'J';
+    const lastName = user.last_name || user.name?.split(' ')[1] || 'D';
+    return `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase();
+  };
+
+  // Get user display name
+  const getUserName = () => {
+    if (!user) return 'John Doe';
+    return user.name || `${user.first_name || ''} ${user.last_name || ''}`.trim() || 'User';
+  };
+
+  // Get user role
+  const getUserRole = () => {
+    if (!user) return 'Admin';
+    return user.role || user.user_type || 'User';
+  };
 
   return (
     <AppShell
@@ -123,14 +202,14 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                       color="violet"
                       size="md"
                     >
-                      JD
+                      {getUserInitials()}
                     </Avatar>
                     <div style={{ flex: 1 }}>
                       <Text size="sm" fw={600} style={{ lineHeight: 1.2 }}>
-                        John Doe
+                        {getUserName()}
                       </Text>
                       <Text size="xs" c="dimmed" style={{ lineHeight: 1.2 }}>
-                        Admin
+                        {getUserRole()}
                       </Text>
                     </div>
                     <IconChevronDown size={16} stroke={1.5} />
@@ -147,12 +226,13 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                   Settings
                 </Menu.Item>
                 <Menu.Divider />
-                <Menu.Item 
-                  color="red" 
+                <Menu.Item
+                  color="red"
                   leftSection={<IconLogout size={16} />}
-                  // onClick={}
+                  onClick={handleLogout}
+                  disabled={isLoggingOut}
                 >
-                  Logout
+                  {isLoggingOut ? 'Logging out...' : 'Logout'}
                 </Menu.Item>
               </Menu.Dropdown>
             </Menu>

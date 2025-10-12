@@ -20,9 +20,11 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useState, useEffect } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { validateBarcode } from '@/app/api/batch_request_api';
+import { validateBarcode, fetchBatchRecordsById } from '@/app/api/batch_request_api';
 import { showSuccessNotification, showErrorNotification } from '@/lib/notifications';
 import { useDebouncedInput } from '@/lib/debounce';
+import { useNumericInput } from '@/lib/inputHelpers';
+import { StyledDataTable, createBadgeRenderer,SimpleDataTable } from '@/lib/dataTableHelper';
 
 
 interface ChangeItemStatusForm {
@@ -43,6 +45,8 @@ export default function ChangeItemStatusPage() {
         register,
         handleSubmit,
         control,
+        setValue,
+        reset,
         formState: { errors },
         watch,
     } = useForm<ChangeItemStatusForm>({
@@ -56,16 +60,33 @@ export default function ChangeItemStatusPage() {
         },
     });
 
+    // Fetch batch records
+    const { data: batchRecords, isLoading: isLoadingRecords, refetch: refetchRecords } = useQuery({
+        queryKey: ['batchRecords', batchNumber],
+        queryFn: () => fetchBatchRecordsById(batchNumber || ''),
+        enabled: !!batchNumber,
+    });
+
     const validateBarcodeMutation = useMutation({
         mutationFn: ({ upc, batchNumber }: { upc: string; batchNumber: string }) =>
             validateBarcode(upc, batchNumber),
         onSuccess: (data) => {
-            showSuccessNotification(
-                'Barcode Validated',
-                'Item details have been loaded successfully'
-            );
-            // You can populate the form fields here with data from the response
-            // For example: setValue('sku', data.sku);
+            console.log(data);
+            
+            if (data.status) {
+                showSuccessNotification(
+                    'Barcode Validated',
+                    data.message || 'Item details have been loaded successfully'
+                );
+                setValue('sku',data.SKU);
+                setValue('description',data.DESCRIPTION);
+                setValue('currentSkuStatus',data.SKU_STATUS);
+            } else {
+                showErrorNotification(
+                    'Validation Failed',
+                    data.message || 'The barcode could not be validated'
+                );
+            }
         },
         onError: (error) => {
             showErrorNotification(
@@ -78,6 +99,9 @@ export default function ChangeItemStatusPage() {
     const onSubmit = (data: ChangeItemStatusForm) => {
         console.log('Form submitted:', data);
         // Add your save logic here
+        // After successful save, refetch the table and reset the form
+        // refetchRecords();
+        // reset();
     };
 
     const handleGoBack = () => {
@@ -94,12 +118,21 @@ export default function ChangeItemStatusPage() {
         }
     }, 800);
 
+    // Create numeric-only input handlers for UPC
+    const numericUpcHandlers = useNumericInput((value) => {
+        // Create a synthetic event for the debounced handler
+        const syntheticEvent = {
+            target: { value },
+        } as React.ChangeEvent<HTMLInputElement>;
+        handleUpcChange(syntheticEvent);
+    });
+
     const statusOptions = [
         { value: '', label: '-- SELECT ITEM STATUS --' },
-        { value: 'ACTIVE', label: 'ACTIVE' },
-        { value: 'INACTIVE', label: 'INACTIVE' },
-        { value: 'DISCONTINUED', label: 'DISCONTINUED' },
-        { value: 'PENDING', label: 'PENDING' },
+        { value: 'ACTIVE', label: 'Active' },
+        { value: 'INACTIVE', label: 'Inactive' },
+        { value: 'NOT TO BE REORDERED', label: 'Not to be Re-ordered' },
+        { value: 'TO BE PURGED', label: 'To be Purged' },
     ];
 
     return (
@@ -164,7 +197,7 @@ export default function ChangeItemStatusPage() {
                         size="md"
                         {...register('upc')}
                         error={errors.upc?.message}
-                        onChange={handleUpcChange}
+                        {...numericUpcHandlers}
                         styles={{
                         input: {
                             border: '1px solid #dee2e6',
@@ -366,6 +399,134 @@ export default function ChangeItemStatusPage() {
             </Box>
             </Paper>
         </form>
+
+        {/* Encoded Records DataTable */}
+        <Box mt="xl">
+            <StyledDataTable
+                title="ENCODED RECORDS"
+                showRecordCount
+                data={batchRecords || []}
+                isLoading={isLoadingRecords}
+                emptyMessage="No encoded records yet."
+                columns={[
+                    {
+                        accessor: 'upc',
+                        title: 'UPC',
+                        width: 150,
+                        ellipsis: true,
+                    },
+                    {
+                        accessor: 'sku',
+                        title: 'SKU #',
+                        width: 120,
+                    },
+                    {
+                        accessor: 'description',
+                        title: 'Description',
+                        ellipsis: true,
+                    },
+                    {
+                        accessor: 'current_status',
+                        title: 'Current Status',
+                        width: 150,
+                        render: createBadgeRenderer('current_status', 'gray', 'light'),
+                    },
+                    {
+                        accessor: 'new_status',
+                        title: 'New Status',
+                        width: 150,
+                        render: createBadgeRenderer('new_status', 'blue', 'filled'),
+                    },
+                    {
+                        accessor: 'effectivity_date',
+                        title: 'Effectivity Date',
+                        width: 140,
+                    },
+                    {
+                        accessor: 'actions',
+                        title: 'Actions',
+                        width: 100,
+                        textAlign: 'center',
+                        render: (record: any) => (
+                            <Group gap="xs" justify="center">
+                                <Button
+                                    size="xs"
+                                    variant="light"
+                                    color="red"
+                                    onClick={() => {
+                                        // Add delete logic here
+                                        console.log('Delete clicked', record);
+                                    }}
+                                >
+                                    Delete
+                                </Button>
+                            </Group>
+                        ),
+                    },
+                ]}
+            />
+            {/* <SimpleDataTable
+                data={batchRecords || []}
+                isLoading={isLoadingRecords}
+                emptyMessage="No encoded records yet."
+                columns={[
+                    {
+                        accessor: 'upc',
+                        title: 'UPC',
+                        width: 150,
+                        ellipsis: true,
+                    },
+                    {
+                        accessor: 'sku',
+                        title: 'SKU #',
+                        width: 120,
+                    },
+                    {
+                        accessor: 'description',
+                        title: 'Description',
+                        ellipsis: true,
+                    },
+                    {
+                        accessor: 'current_status',
+                        title: 'Current Status',
+                        width: 150,
+                        render: createBadgeRenderer('current_status', 'gray', 'light'),
+                    },
+                    {
+                        accessor: 'new_status',
+                        title: 'New Status',
+                        width: 150,
+                        render: createBadgeRenderer('new_status', 'blue', 'filled'),
+                    },
+                    {
+                        accessor: 'effectivity_date',
+                        title: 'Effectivity Date',
+                        width: 140,
+                    },
+                    {
+                        accessor: 'actions',
+                        title: 'Actions',
+                        width: 100,
+                        textAlign: 'center',
+                        render: (record: any) => (
+                            <Group gap="xs" justify="center">
+                                <Button
+                                    size="xs"
+                                    variant="light"
+                                    color="red"
+                                    onClick={() => {
+                                        // Add delete logic here
+                                        console.log('Delete clicked', record);
+                                    }}
+                                >
+                                    Delete
+                                </Button>
+                            </Group>
+                        ),
+                    },
+                ]}
+            /> */}
+        </Box>
         </Box>
     );
 }

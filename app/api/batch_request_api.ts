@@ -8,7 +8,7 @@ export const validateBarcode = async (upc: string, batchNumber: string) => {
             headers: {
                 'Content-Type': 'application/json',
                 'Accept': 'application/json',
-                'x-account-session-token': token || '',
+                'Authorization': `Bearer ${token}`,
             },
             body: JSON.stringify({
                 upc: upc,
@@ -21,6 +21,32 @@ export const validateBarcode = async (upc: string, batchNumber: string) => {
         }
 
         return await response.json();
+    } catch (error) {
+        console.log(error);
+        throw error;
+    }
+}
+
+export const fetchBatchRecordsById = async (batchNumber: string) => {
+
+    try {
+        const token = localStorage.getItem('token');
+
+        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/request/batch-records/fetch/${batchNumber}`, {
+            method: 'GET',
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+                'Authorization': `Bearer ${token}`,
+            },
+        });
+
+        if (!response.ok) {
+            throw new Error('Failed to fetch batch records');
+        }
+
+        const result = await response.json();
+        return result.data || [];
     } catch (error) {
         console.log(error);
         throw error;

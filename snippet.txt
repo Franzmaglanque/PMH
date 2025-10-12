@@ -1,0 +1,17 @@
+// Simple - just make input numeric
+  const numericHandlers = useNumericInput();
+  <TextInput {...numericHandlers} />
+
+  // With callback
+  const numericHandlers = useNumericInput((value) => {
+    console.log('Numeric:', value);
+  });
+  <TextInput {...numericHandlers} />
+
+  // With max length (phone number)
+  const phoneHandlers = useNumericInputWithMaxLength(10);
+  <TextInput {...phoneHandlers} />
+
+  // With react-hook-form
+  const handlers = useNumericInput();
+  <TextInput {...register('upc')} {...handlers} />
