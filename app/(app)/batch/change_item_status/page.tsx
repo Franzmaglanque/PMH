@@ -20,23 +20,14 @@ import { IconArrowLeft, IconDeviceFloppy, IconCheck } from '@tabler/icons-react'
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useState, useEffect } from 'react';
 import { useForm, Controller } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { validateBarcode, fetchBatchRecordsById,saveBatchRecord } from '@/app/api/batch_request_api';
 import { showSuccessNotification, showErrorNotification } from '@/lib/notifications';
 import { useDebouncedInput } from '@/lib/debounce';
 import { useNumericInput } from '@/lib/inputHelpers';
 import { StyledDataTable, createBadgeRenderer,SimpleDataTable } from '@/lib/dataTableHelper';
-
-
-interface ChangeItemStatusForm {
-  barcode: string;
-  sku: string;
-  long_name: string;
-  sku_status: string;
-  effectivity_date: Date | null;
-  dept:string;
-  deptnm:string;
-}
+import { changeItemStatusSchema, type ChangeItemStatusInput } from '@/lib/schemas/batch.schema';
 
 export default function ChangeItemStatusPage() {
     const router = useRouter();
@@ -54,13 +45,16 @@ export default function ChangeItemStatusPage() {
         reset,
         formState: { errors },
         watch,
-    } = useForm<ChangeItemStatusForm>({
+    } = useForm<ChangeItemStatusInput>({
+        resolver: zodResolver(changeItemStatusSchema),
         defaultValues: {
         barcode: '',
         sku: '',
         long_name: '',
         sku_status: '',
         effectivity_date: null,
+        dept: '',
+        deptnm: '',
         },
     });
 
@@ -146,14 +140,17 @@ export default function ChangeItemStatusPage() {
         },
     });
 
-    const onSubmit = (data: ChangeItemStatusForm) => {
-        console.log('Form submitted:', data);
+    const onSubmit = (data: ChangeItemStatusInput) => {
+        console.log('Form submitted (validated by Zod):', data);
+        const formattedDate = data.effectivity_date instanceof Date 
+        ? data.effectivity_date.toISOString().split('T')[0]
+        : data.effectivity_date;
         saveBatchRecordMutation.mutate({
             ...data,
-            batch_number:batchNumber,
-            request_type:'change_status'
-        })
-      
+            effectivity_date: formattedDate,
+            batch_number: batchNumber,
+            request_type: 'change_status'
+        });
     };
 
     const handleGoBack = () => {
@@ -401,10 +398,11 @@ export default function ChangeItemStatusPage() {
                         control={control}
                         render={({ field }) => (
                         <TextInput
-                            {...field}
                             type="date"
                             size="md"
-                            placeholder="mm / dd / yyyy"
+                            value={field.value ? new Date(field.value).toISOString().split('T')[0] : ''}
+                            onChange={(e) => field.onChange(e.target.value ? new Date(e.target.value) : null)}
+                            error={errors.effectivity_date?.message}
                             styles={{
                             input: {
                                 border: '1px solid #dee2e6',
@@ -412,8 +410,6 @@ export default function ChangeItemStatusPage() {
                                 fontSize: rem(14),
                             },
                             }}
-                            value={field.value ? new Date(field.value).toISOString().split('T')[0] : ''}
-                            onChange={(e) => field.onChange(e.target.value ? new Date(e.target.value) : null)}
                         />
                         )}
                     />
