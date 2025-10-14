@@ -14,13 +14,14 @@ import {
   Box,
   rem,
   Grid,
+  LoadingOverlay,
 } from '@mantine/core';
 import { IconArrowLeft, IconDeviceFloppy, IconCheck } from '@tabler/icons-react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useState, useEffect } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { validateBarcode, fetchBatchRecordsById } from '@/app/api/batch_request_api';
+import { validateBarcode, fetchBatchRecordsById,saveBatchRecord } from '@/app/api/batch_request_api';
 import { showSuccessNotification, showErrorNotification } from '@/lib/notifications';
 import { useDebouncedInput } from '@/lib/debounce';
 import { useNumericInput } from '@/lib/inputHelpers';
@@ -28,18 +29,22 @@ import { StyledDataTable, createBadgeRenderer,SimpleDataTable } from '@/lib/data
 
 
 interface ChangeItemStatusForm {
-  upc: string;
+  barcode: string;
   sku: string;
-  description: string;
-  currentSkuStatus: string;
-  changeSkuStatus: string;
-  effectivityDate: Date | null;
+  long_name: string;
+  sku_status: string;
+  effectivity_date: Date | null;
+  dept:string;
+  deptnm:string;
 }
 
 export default function ChangeItemStatusPage() {
     const router = useRouter();
     const searchParams = useSearchParams();
     const batchNumber = searchParams.get('batch_number');
+
+    // Separate state for display-only field
+    const [currentSkuStatus, setCurrentSkuStatus] = useState<string>('');
 
     const {
         register,
@@ -51,12 +56,11 @@ export default function ChangeItemStatusPage() {
         watch,
     } = useForm<ChangeItemStatusForm>({
         defaultValues: {
-        upc: '',
+        barcode: '',
         sku: '',
-        description: '',
-        currentSkuStatus: '',
-        changeSkuStatus: '',
-        effectivityDate: null,
+        long_name: '',
+        sku_status: '',
+        effectivity_date: null,
         },
     });
 
@@ -68,20 +72,27 @@ export default function ChangeItemStatusPage() {
     });
 
     const validateBarcodeMutation = useMutation({
-        mutationFn: ({ upc, batchNumber }: { upc: string; batchNumber: string }) =>
-            validateBarcode(upc, batchNumber),
+        mutationFn: ({ barcode, batchNumber }: { barcode: string; batchNumber: string }) =>
+            validateBarcode(barcode, batchNumber),
         onSuccess: (data) => {
-            console.log(data);
-            
+            console.log('API Response:', data);
+
             if (data.status) {
                 showSuccessNotification(
                     'Barcode Validated',
                     data.message || 'Item details have been loaded successfully'
                 );
-                setValue('sku',data.SKU);
-                setValue('description',data.DESCRIPTION);
-                setValue('currentSkuStatus',data.SKU_STATUS);
+                // Update form fields
+                setValue('sku', data.sku);
+                setValue('long_name', data.description);
+                setValue('dept', data.dept);
+                setValue('deptnm', data.deptnm);
+
+                setCurrentSkuStatus(data.sku_status || '');
+
             } else {
+                reset();
+                setCurrentSkuStatus('');
                 showErrorNotification(
                     'Validation Failed',
                     data.message || 'The barcode could not be validated'
@@ -89,6 +100,45 @@ export default function ChangeItemStatusPage() {
             }
         },
         onError: (error) => {
+           reset();
+            setCurrentSkuStatus('');
+            showErrorNotification(
+                'Validation Failed',
+                error instanceof Error ? error.message : 'Failed to validate barcode'
+            );
+        },
+    });
+
+    const saveBatchRecordMutation = useMutation({
+        mutationFn: saveBatchRecord,
+        onSuccess: (data) => {
+            console.log('API Response:', data);
+
+            if (data.status) {
+                showSuccessNotification(
+                    'Barcode Validated',
+                    data.message || 'Item details have been loaded successfully'
+                );
+                // Update form fields
+                setValue('sku', data.sku);
+                setValue('long_name', data.description);
+                setValue('dept', data.dept);
+                setValue('deptnm', data.deptnm);
+
+                setCurrentSkuStatus(data.sku_status || '');
+
+            } else {
+                reset();
+                setCurrentSkuStatus('');
+                showErrorNotification(
+                    'Validation Failed',
+                    data.message || 'The barcode could not be validated'
+                );
+            }
+        },
+        onError: (error) => {
+           reset();
+            setCurrentSkuStatus('');
             showErrorNotification(
                 'Validation Failed',
                 error instanceof Error ? error.message : 'Failed to validate barcode'
@@ -98,34 +148,27 @@ export default function ChangeItemStatusPage() {
 
     const onSubmit = (data: ChangeItemStatusForm) => {
         console.log('Form submitted:', data);
-        // Add your save logic here
-        // After successful save, refetch the table and reset the form
-        // refetchRecords();
-        // reset();
+        saveBatchRecordMutation.mutate({
+            ...data,
+            batch_number:batchNumber,
+            request_type:'change_status'
+        })
+      
     };
 
     const handleGoBack = () => {
         router.push('/batch');
     };
 
-    // Create debounced input handler for UPC validation
-    const handleUpcChange = useDebouncedInput((upcValue: string) => {
+    // Create debounced callback for UPC validation
+    const validateUpc = useDebouncedInput((upcValue: string) => {
         if (upcValue && upcValue.length > 0) {
             validateBarcodeMutation.mutate({
-                upc: upcValue,
+                barcode: upcValue,
                 batchNumber: batchNumber || '',
             });
         }
     }, 800);
-
-    // Create numeric-only input handlers for UPC
-    const numericUpcHandlers = useNumericInput((value) => {
-        // Create a synthetic event for the debounced handler
-        const syntheticEvent = {
-            target: { value },
-        } as React.ChangeEvent<HTMLInputElement>;
-        handleUpcChange(syntheticEvent);
-    });
 
     const statusOptions = [
         { value: '', label: '-- SELECT ITEM STATUS --' },
@@ -170,7 +213,13 @@ export default function ChangeItemStatusPage() {
 
         {/* Main Form */}
         <form onSubmit={handleSubmit(onSubmit)}>
-            <Paper shadow="sm" p={0} withBorder style={{ overflow: 'hidden' }}>
+            <Paper shadow="sm" p={0} withBorder style={{ overflow: 'hidden', position: 'relative' }}>
+            <LoadingOverlay
+                visible={validateBarcodeMutation.isPending}
+                zIndex={1000}
+                overlayProps={{ radius: "sm", blur: 2 }}
+                loaderProps={{ color: 'blue', type: 'bars' }}
+            />
             {/* Item Description Section */}
             <Box p="xl" style={{ backgroundColor: 'white' }}>
                 <Title
@@ -192,19 +241,33 @@ export default function ChangeItemStatusPage() {
                     <Text size="sm" fw={600} mb={rem(8)} c="#495057">
                         UPC
                     </Text>
-                    <TextInput
-                        placeholder=""
-                        size="md"
-                        {...register('upc')}
-                        error={errors.upc?.message}
-                        {...numericUpcHandlers}
-                        styles={{
-                        input: {
-                            border: '1px solid #dee2e6',
-                            borderRadius: rem(4),
-                            fontSize: rem(14),
-                        },
-                        }}
+                    <Controller
+                        name="barcode"
+                        control={control}
+                        render={({ field }) => (
+                            <TextInput
+                                placeholder=""
+                                size="md"
+                                value={field.value}
+                                onChange={(e) => {
+                                    const value = e.target.value;
+                                    // Only allow numeric characters
+                                    if (/^\d*$/.test(value)) {
+                                        field.onChange(value);
+                                        // Trigger debounced validation
+                                        validateUpc({ target: { value } } as React.ChangeEvent<HTMLInputElement>);
+                                    }
+                                }}
+                                error={errors.barcode?.message}
+                                styles={{
+                                    input: {
+                                        border: '1px solid #dee2e6',
+                                        borderRadius: rem(4),
+                                        fontSize: rem(14),
+                                    },
+                                }}
+                            />
+                        )}
                     />
                     </Box>
                 </Grid.Col>
@@ -242,8 +305,8 @@ export default function ChangeItemStatusPage() {
                         placeholder=""
                         size="md"
                         readOnly
-                        {...register('description')}
-                        error={errors.description?.message}
+                        {...register('long_name')}
+                        error={errors.long_name?.message}
                         styles={{
                         input: {
                             border: '1px solid #dee2e6',
@@ -266,7 +329,7 @@ export default function ChangeItemStatusPage() {
                         placeholder=""
                         size="md"
                         readOnly
-                        {...register('currentSkuStatus')}
+                        value={currentSkuStatus}
                         styles={{
                         input: {
                             border: '1px solid #dee2e6',
@@ -306,7 +369,7 @@ export default function ChangeItemStatusPage() {
                         CHANGE SKU STATUS
                     </Text>
                     <Controller
-                        name="changeSkuStatus"
+                        name="sku_status"
                         control={control}
                         render={({ field }) => (
                         <Select
@@ -314,7 +377,7 @@ export default function ChangeItemStatusPage() {
                             placeholder="-- SELECT ITEM STATUS --"
                             size="md"
                             data={statusOptions}
-                            error={errors.changeSkuStatus?.message}
+                            error={errors.sku_status?.message}
                             styles={{
                             input: {
                                 border: '1px solid #dee2e6',
@@ -334,7 +397,7 @@ export default function ChangeItemStatusPage() {
                         EFFECTIVITY DATE
                     </Text>
                     <Controller
-                        name="effectivityDate"
+                        name="effectivity_date"
                         control={control}
                         render={({ field }) => (
                         <TextInput

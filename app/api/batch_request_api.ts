@@ -52,3 +52,29 @@ export const fetchBatchRecordsById = async (batchNumber: string) => {
         throw error;
     }
 }
+
+export const saveBatchRecord = async (params:any) => {
+
+    try {
+        const token = localStorage.getItem('token');
+
+        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/batch/record/save`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+                'Authorization': `Bearer ${token}`,
+            },
+            body: JSON.stringify(params),
+        });
+
+        if (!response.ok) {
+            throw new Error('Failed to validate barcode');
+        }
+
+        return await response.json();
+    } catch (error) {
+        console.log(error);
+        throw error;
+    }
+}
