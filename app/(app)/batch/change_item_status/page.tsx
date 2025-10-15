@@ -31,11 +31,26 @@ import { changeItemStatusSchema, type ChangeItemStatusInput } from '@/lib/schema
 
 export default function ChangeItemStatusPage() {
     const router = useRouter();
-    const searchParams = useSearchParams();
-    const batchNumber = searchParams.get('batch_number');
+
+    // Get batch number from sessionStorage (passed as state from batch page)
+    const [batchNumber, setBatchNumber] = useState<string | null>(null);
 
     // Separate state for display-only field
     const [currentSkuStatus, setCurrentSkuStatus] = useState<string>('');
+
+    // Load batch number from sessionStorage on mount
+    useEffect(() => {
+        const storedBatchNumber = sessionStorage.getItem('current_batch_number');
+        if (storedBatchNumber) {
+            setBatchNumber(storedBatchNumber);
+            // Optionally clear it after reading
+            // sessionStorage.removeItem('current_batch_number');
+        } else {
+            // If no batch number in session, redirect back to batch page
+            showErrorNotification('No Batch Selected', 'Please select or create a batch first');
+            router.push('/batch');
+        }
+    }, [router]);
 
     const {
         register,

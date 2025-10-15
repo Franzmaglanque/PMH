@@ -2,7 +2,7 @@
 
 import { Container, Title, Button, TextInput, Select, Table, Text, Group, ActionIcon, Modal } from '@mantine/core';
 import { IconPlus, IconSearch, IconChevronDown } from '@tabler/icons-react';
-import { useState } from 'react';
+import { useState, useTransition } from 'react';
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { fetchBatchRecords } from '../../api/batch_table_api';
 import 'mantine-datatable/styles.css';
@@ -10,8 +10,12 @@ import { DataTable } from 'mantine-datatable';
 import { showSuccessNotification, showErrorNotification } from '@/lib/notifications';
 import { generateBatch } from '../../api/batch_table_api';
 import { useRouter } from 'next/navigation';
+// import { useNavigate } from "react-router-dom";
+
 
 export default function UpdateItemChangePage() {
+    const navigate = useNavigate();
+
     const [filter, setFilter] = useState('');
     const [pageSize, setPageSize] = useState('10');
     const [modalOpened, setModalOpened] = useState(false);
@@ -32,8 +36,10 @@ export default function UpdateItemChangePage() {
                 'Batch Created Successfully',
                 `Batch #${data.batch_number || 'N/A'} has been created`
             );
-            // Navigate to change_item_status page with the batch number
-            router.push(`/batch/change_item_status?batch_number=${data.batch_number}`);
+            // Store batch number in sessionStorage to pass as state
+            sessionStorage.setItem('current_batch_number', data.batch_number);
+            // Navigate to change_item_status page
+            router.push('/batch/change_item_status');
         },
         onError: (error) => {
             showErrorNotification(
