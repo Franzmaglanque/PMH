@@ -15,6 +15,7 @@ import {
   rem,
   Grid,
   LoadingOverlay,
+  Modal,
 } from '@mantine/core';
 import { IconArrowLeft, IconDeviceFloppy, IconCheck } from '@tabler/icons-react';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -28,6 +29,7 @@ import { useDebouncedInput } from '@/lib/debounce';
 import { useNumericInput } from '@/lib/inputHelpers';
 import { StyledDataTable, createBadgeRenderer,SimpleDataTable } from '@/lib/dataTableHelper';
 import { changeItemStatusSchema, type ChangeItemStatusInput } from '@/lib/schemas/batch.schema';
+import { changeStatusColumns } from '@/components/Columns/Change_status';
 
 export default function ChangeItemStatusPage() {
     const PAGE_TYPE = 'change_status';
@@ -37,6 +39,8 @@ export default function ChangeItemStatusPage() {
     const batchNumber = searchParams.get('batch_number');
     // const [batchNumber, setBatchNumber] = useState<string | null>(null);
     const [currentSkuStatus, setCurrentSkuStatus] = useState<string>('');
+    const [confirmModalOpened, setConfirmModalOpened] = useState(false);
+    const [pendingFormData, setPendingFormData] = useState<ChangeItemStatusInput | null>(null);
 
     const { data: batchRecords, isLoading:isLoadingRecords, error } = useQuery({
         queryKey: ['batchRecords', batchNumber, PAGE_TYPE],
@@ -158,15 +162,33 @@ export default function ChangeItemStatusPage() {
 
     const onSubmit = (data: ChangeItemStatusInput) => {
         console.log('Form submitted (validated by Zod):', data);
-        const formattedDate = data.effectivity_date instanceof Date 
-        ? data.effectivity_date.toISOString().split('T')[0]
-        : data.effectivity_date;
+        // Store form data and open confirmation modal
+        setPendingFormData(data);
+        setConfirmModalOpened(true);
+    };
+
+    const handleConfirmSave = () => {
+        if (!pendingFormData) return;
+
+        const formattedDate = pendingFormData.effectivity_date instanceof Date
+        ? pendingFormData.effectivity_date.toISOString().split('T')[0]
+        : pendingFormData.effectivity_date;
+
         saveBatchRecordMutation.mutate({
-            ...data,
+            ...pendingFormData,
             effectivity_date: formattedDate,
             batch_number: batchNumber,
             request_type: 'change_status'
         });
+
+        // Close modal and clear pending data
+        setConfirmModalOpened(false);
+        setPendingFormData(null);
+    };
+
+    const handleCancelSave = () => {
+        setConfirmModalOpened(false);
+        setPendingFormData(null);
     };
 
     const handleGoBack = () => {
@@ -483,56 +505,7 @@ export default function ChangeItemStatusPage() {
                 data={batchRecords || []}
                 isLoading={isLoadingRecords}
                 emptyMessage="No encoded records yet."
-                columns={[
-                    {
-                        accessor: 'barcode',
-                        title: 'Barcode',
-                        width: 150,
-                        ellipsis: true,
-                    },
-                    {
-                        accessor: 'sku',
-                        title: 'SKU #',
-                        width: 120,
-                    },
-                    {
-                        accessor: 'long_name',
-                        title: 'Description',
-                        ellipsis: true,
-                    },
-                    {
-                        accessor: 'sku_status',
-                        title: 'New Status',
-                        width: 150,
-                        render: createBadgeRenderer('sku_status', 'gray', 'light'),
-                    },
-                    {
-                        accessor: 'effectivity_date',
-                        title: 'Effectivity Date',
-                        width: 140,
-                    },
-                    {
-                        accessor: 'actions',
-                        title: 'Actions',
-                        width: 100,
-                        textAlign: 'center',
-                        render: (record: any) => (
-                            <Group gap="xs" justify="center">
-                                <Button
-                                    size="xs"
-                                    variant="light"
-                                    color="red"
-                                    onClick={() => {
-                                        // Add delete logic here
-                                        console.log('Delete clicked', record);
-                                    }}
-                                >
-                                    Delete
-                                </Button>
-                            </Group>
-                        ),
-                    },
-                ]}
+                columns={changeStatusColumns}
             />
             {/* <SimpleDataTable
                 data={batchRecords || []}
@@ -596,6 +569,84 @@ export default function ChangeItemStatusPage() {
                 ]}
             /> */}
         </Box>
+
+        {/* Confirmation Modal */}
+        <Modal
+            opened={confirmModalOpened}
+            onClose={handleCancelSave}
+            title={
+                <Group gap="xs">
+                    <IconDeviceFloppy size={24} style={{ color: '#1971c2' }} />
+                    <Text fw={700} size="lg">Confirm Save</Text>
+                </Group>
+            }
+            centered
+            size="md"
+            styles={{
+                title: {
+                    width: '100%',
+                },
+            }}
+        >
+            <Stack gap="lg">
+                <Text size="sm" c="dimmed">
+                    You are about to save the encoded item details to this batch. This action will add the following record:
+                </Text>
+
+                {pendingFormData && (
+                    <Paper p="md" withBorder style={{ backgroundColor: '#f8f9fa' }}>
+                        <Stack gap="xs">
+                            <Group justify="space-between">
+                                <Text size="sm" fw={600}>SKU:</Text>
+                                <Text size="sm">{pendingFormData.sku || 'N/A'}</Text>
+                            </Group>
+                            <Group justify="space-between">
+                                <Text size="sm" fw={600}>Description:</Text>
+                                <Text size="sm" style={{ maxWidth: '60%', textAlign: 'right' }}>
+                                    {pendingFormData.long_name || 'N/A'}
+                                </Text>
+                            </Group>
+                            <Group justify="space-between">
+                                <Text size="sm" fw={600}>New Status:</Text>
+                                <Badge color="blue" variant="light">
+                                    {pendingFormData.sku_status || 'N/A'}
+                                </Badge>
+                            </Group>
+                            <Group justify="space-between">
+                                <Text size="sm" fw={600}>Effectivity Date:</Text>
+                                <Text size="sm">
+                                    {pendingFormData.effectivity_date
+                                        ? new Date(pendingFormData.effectivity_date).toLocaleDateString()
+                                        : 'N/A'}
+                                </Text>
+                            </Group>
+                        </Stack>
+                    </Paper>
+                )}
+
+                <Text size="sm" c="dimmed">
+                    Do you want to proceed with saving this record?
+                </Text>
+
+                <Group justify="flex-end" gap="md" mt="md">
+                    <Button
+                        variant="light"
+                        color="gray"
+                        onClick={handleCancelSave}
+                    >
+                        Cancel
+                    </Button>
+                    <Button
+                        color="blue"
+                        leftSection={<IconDeviceFloppy size={18} />}
+                        onClick={handleConfirmSave}
+                        loading={saveBatchRecordMutation.isPending}
+                    >
+                        Confirm & Save
+                    </Button>
+                </Group>
+            </Stack>
+        </Modal>
         </Box>
     );
 }
