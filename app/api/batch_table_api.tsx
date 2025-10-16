@@ -25,7 +25,7 @@ export const fetchBatchRecords = async () => {
 
     try {
 
-        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/test`, {
+        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/batch/fetch`, {
                 method: "GET",
                 headers: {
                     "Content-Type": "application/json",

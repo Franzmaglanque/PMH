@@ -10,12 +10,8 @@ import { DataTable } from 'mantine-datatable';
 import { showSuccessNotification, showErrorNotification } from '@/lib/notifications';
 import { generateBatch } from '../../api/batch_table_api';
 import { useRouter } from 'next/navigation';
-// import { useNavigate } from "react-router-dom";
-
 
 export default function UpdateItemChangePage() {
-    const navigate = useNavigate();
-
     const [filter, setFilter] = useState('');
     const [pageSize, setPageSize] = useState('10');
     const [modalOpened, setModalOpened] = useState(false);
@@ -39,7 +35,7 @@ export default function UpdateItemChangePage() {
             // Store batch number in sessionStorage to pass as state
             sessionStorage.setItem('current_batch_number', data.batch_number);
             // Navigate to change_item_status page
-            router.push('/batch/change_item_status');
+            router.push(`/batch/change_item_status?batch_number=${data.batch_number}`);
         },
         onError: (error) => {
             showErrorNotification(
@@ -56,7 +52,7 @@ export default function UpdateItemChangePage() {
     const handleAcceptCreateBatch = () => {
         setModalOpened(false);
         // Trigger the mutation to create a new batch with request_type
-        createBatchMutation.mutate('CHANGE_STATUS');
+        createBatchMutation.mutate('change_status');
     };
 
     return (

@@ -21,8 +21,8 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useState, useEffect } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useQuery, useMutation } from "@tanstack/react-query";
-import { validateBarcode, fetchBatchRecordsById,saveBatchRecord } from '@/app/api/batch_request_api';
+import { useQuery, useMutation,useQueryClient } from "@tanstack/react-query";
+import { validateBarcode, fetchBatchRecordsById,saveBatchRecord,fetchBatchRecords } from '@/app/api/batch_request_api';
 import { showSuccessNotification, showErrorNotification } from '@/lib/notifications';
 import { useDebouncedInput } from '@/lib/debounce';
 import { useNumericInput } from '@/lib/inputHelpers';
@@ -30,27 +30,34 @@ import { StyledDataTable, createBadgeRenderer,SimpleDataTable } from '@/lib/data
 import { changeItemStatusSchema, type ChangeItemStatusInput } from '@/lib/schemas/batch.schema';
 
 export default function ChangeItemStatusPage() {
+    const PAGE_TYPE = 'change_status';
     const router = useRouter();
-
-    // Get batch number from sessionStorage (passed as state from batch page)
-    const [batchNumber, setBatchNumber] = useState<string | null>(null);
-
-    // Separate state for display-only field
+    const queryClient = useQueryClient();
+    const searchParams = useSearchParams();
+    const batchNumber = searchParams.get('batch_number');
+    // const [batchNumber, setBatchNumber] = useState<string | null>(null);
     const [currentSkuStatus, setCurrentSkuStatus] = useState<string>('');
 
-    // Load batch number from sessionStorage on mount
-    useEffect(() => {
-        const storedBatchNumber = sessionStorage.getItem('current_batch_number');
-        if (storedBatchNumber) {
-            setBatchNumber(storedBatchNumber);
-            // Optionally clear it after reading
-            // sessionStorage.removeItem('current_batch_number');
-        } else {
-            // If no batch number in session, redirect back to batch page
-            showErrorNotification('No Batch Selected', 'Please select or create a batch first');
-            router.push('/batch');
-        }
-    }, [router]);
+    const { data: batchRecords, isLoading:isLoadingRecords, error } = useQuery({
+        queryKey: ['batchRecords', batchNumber, PAGE_TYPE],
+        queryFn: () => fetchBatchRecords(batchNumber!, PAGE_TYPE),
+        enabled: !!batchNumber,
+        retry: false, // Don't retry on validation errors
+    });
+
+    // IF USING SESSION STORAGE
+    // useEffect(() => {
+    //     const storedBatchNumber = sessionStorage.getItem('current_batch_number');
+    //     if (storedBatchNumber) {
+    //         setBatchNumber(storedBatchNumber);
+    //         // Optionally clear it after reading
+    //         // sessionStorage.removeItem('current_batch_number');
+    //     } else {
+    //         // If no batch number in session, redirect back to batch page
+    //         showErrorNotification('No Batch Selected', 'Please select or create a batch first');
+    //         router.push('/batch');
+    //     }
+    // }, [router]);
 
     const {
         register,
@@ -74,11 +81,11 @@ export default function ChangeItemStatusPage() {
     });
 
     // Fetch batch records
-    const { data: batchRecords, isLoading: isLoadingRecords, refetch: refetchRecords } = useQuery({
-        queryKey: ['batchRecords', batchNumber],
-        queryFn: () => fetchBatchRecordsById(batchNumber || ''),
-        enabled: !!batchNumber,
-    });
+    // const { data: batchRecords, isLoading: isLoadingRecords, refetch: refetchRecords } = useQuery({
+    //     queryKey: ['batchRecords', batchNumber],
+    //     queryFn: () => fetchBatchRecordsById(batchNumber || ''),
+    //     enabled: !!batchNumber,
+    // });
 
     const validateBarcodeMutation = useMutation({
         mutationFn: ({ barcode, batchNumber }: { barcode: string; batchNumber: string }) =>
@@ -128,29 +135,23 @@ export default function ChangeItemStatusPage() {
                     'Barcode Validated',
                     data.message || 'Item details have been loaded successfully'
                 );
-                // Update form fields
-                setValue('sku', data.sku);
-                setValue('long_name', data.description);
-                setValue('dept', data.dept);
-                setValue('deptnm', data.deptnm);
-
-                setCurrentSkuStatus(data.sku_status || '');
-
+                queryClient.invalidateQueries({ 
+                    queryKey: ['batchRecords', batchNumber, PAGE_TYPE] 
+                });
+                reset();
             } else {
                 reset();
-                setCurrentSkuStatus('');
                 showErrorNotification(
-                    'Validation Failed',
-                    data.message || 'The barcode could not be validated'
+                    'Save record failed',
+                    data.message || 'Please Contact buyer for assistance'
                 );
             }
         },
         onError: (error) => {
-           reset();
-            setCurrentSkuStatus('');
+            reset();
             showErrorNotification(
-                'Validation Failed',
-                error instanceof Error ? error.message : 'Failed to validate barcode'
+                'Saving Failed',
+                error instanceof Error ? error.message : 'Failed to save record'
             );
         },
     });
@@ -484,8 +485,8 @@ export default function ChangeItemStatusPage() {
                 emptyMessage="No encoded records yet."
                 columns={[
                     {
-                        accessor: 'upc',
-                        title: 'UPC',
+                        accessor: 'barcode',
+                        title: 'Barcode',
                         width: 150,
                         ellipsis: true,
                     },
@@ -495,21 +496,15 @@ export default function ChangeItemStatusPage() {
                         width: 120,
                     },
                     {
-                        accessor: 'description',
+                        accessor: 'long_name',
                         title: 'Description',
                         ellipsis: true,
                     },
                     {
-                        accessor: 'current_status',
-                        title: 'Current Status',
-                        width: 150,
-                        render: createBadgeRenderer('current_status', 'gray', 'light'),
-                    },
-                    {
-                        accessor: 'new_status',
+                        accessor: 'sku_status',
                         title: 'New Status',
                         width: 150,
-                        render: createBadgeRenderer('new_status', 'blue', 'filled'),
+                        render: createBadgeRenderer('sku_status', 'gray', 'light'),
                     },
                     {
                         accessor: 'effectivity_date',
