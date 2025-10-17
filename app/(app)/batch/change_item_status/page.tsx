@@ -23,13 +23,13 @@ import { useState, useEffect } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useQuery, useMutation,useQueryClient } from "@tanstack/react-query";
-import { validateBarcode, fetchBatchRecordsById,saveBatchRecord,fetchBatchRecords } from '@/app/api/batch_request_api';
+import { validateBarcode, fetchBatchRecordsById,saveBatchRecord,fetchBatchRecords,deleteBatchRecord } from '@/app/api/batch_request_api';
 import { showSuccessNotification, showErrorNotification } from '@/lib/notifications';
 import { useDebouncedInput } from '@/lib/debounce';
 import { useNumericInput } from '@/lib/inputHelpers';
 import { StyledDataTable, createBadgeRenderer,SimpleDataTable } from '@/lib/dataTableHelper';
 import { changeItemStatusSchema, type ChangeItemStatusInput } from '@/lib/schemas/batch.schema';
-import { changeStatusColumns } from '@/components/Columns/Change_status';
+import { getChangeStatusColumns } from '@/components/Columns/Change_status';
 
 export default function ChangeItemStatusPage() {
     const PAGE_TYPE = 'change_status';
@@ -139,8 +139,8 @@ export default function ChangeItemStatusPage() {
                     'Barcode Validated',
                     data.message || 'Item details have been loaded successfully'
                 );
-                queryClient.invalidateQueries({ 
-                    queryKey: ['batchRecords', batchNumber, PAGE_TYPE] 
+                queryClient.invalidateQueries({
+                    queryKey: ['batchRecords', batchNumber, PAGE_TYPE]
                 });
                 reset();
             } else {
@@ -159,6 +159,42 @@ export default function ChangeItemStatusPage() {
             );
         },
     });
+
+    const deleteBatchRecordMutation = useMutation({
+        mutationFn: deleteBatchRecord,
+        onSuccess: (data) => {
+            console.log('Delete API Response:', data);
+
+            if (data.status) {
+                showSuccessNotification(
+                    'Record Deleted',
+                    data.message
+                );
+                queryClient.invalidateQueries({
+                    queryKey: ['batchRecords', batchNumber, PAGE_TYPE]
+                });
+            } else {
+                showErrorNotification(
+                    'Delete Failed',
+                    data.message || 'Failed to delete record'
+                );
+            }
+        },
+        onError: (error) => {
+            showErrorNotification(
+                'Delete Failed',
+                error instanceof Error ? error.message : 'Failed to delete record'
+            );
+        },
+    });
+
+    const handleDeleteRecord = (recordId: number) => {
+        deleteBatchRecordMutation.mutate({
+            record_id:recordId,
+            request_type:PAGE_TYPE
+        });
+        // console.log(recordId);
+    };
 
     const onSubmit = (data: ChangeItemStatusInput) => {
         console.log('Form submitted (validated by Zod):', data);
@@ -505,7 +541,7 @@ export default function ChangeItemStatusPage() {
                 data={batchRecords || []}
                 isLoading={isLoadingRecords}
                 emptyMessage="No encoded records yet."
-                columns={changeStatusColumns}
+                columns={getChangeStatusColumns({ onDelete: handleDeleteRecord })}
             />
             {/* <SimpleDataTable
                 data={batchRecords || []}

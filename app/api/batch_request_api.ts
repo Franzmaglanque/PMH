@@ -108,3 +108,29 @@ export const saveBatchRecord = async (params:any) => {
         throw error;
     }
 }
+
+export const deleteBatchRecord = async (params: any) => {
+
+    try {
+        const token = localStorage.getItem('token');
+
+        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/batch/record/delete/${params.record_id}`, {
+            method: 'DELETE',
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+                'Authorization': `Bearer ${token}`,
+            },
+            body: JSON.stringify({request_type:params.request_type}),
+        });
+
+        if (!response.ok) {
+            throw new Error('Failed to delete batch record');
+        }
+
+        return await response.json();
+    } catch (error) {
+        console.log(error);
+        throw error;
+    }
+}

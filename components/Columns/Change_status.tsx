@@ -1,7 +1,12 @@
 import { Button, Group } from '@mantine/core';
+import { modals } from '@mantine/modals';
 import { createBadgeRenderer } from '@/lib/dataTableHelper';
 
-export const changeStatusColumns = [
+interface ChangeStatusColumnsProps {
+    onDelete: (recordId: number) => void;
+}
+
+export const getChangeStatusColumns = ({ onDelete }: ChangeStatusColumnsProps) => [
     {
         accessor: 'barcode',
         title: 'Barcode',
@@ -41,8 +46,22 @@ export const changeStatusColumns = [
                     variant="light"
                     color="red"
                     onClick={() => {
-                        // Add delete logic here
-                        console.log('Delete clicked', record);
+                        modals.openConfirmModal({
+                            title: 'Delete Record',
+                            centered: true,
+                            children: (
+                                <>
+                                    Are you sure you want to delete this record?
+                                    <br />
+                                    <strong>SKU:</strong> {record.sku}
+                                    <br />
+                                    <strong>Description:</strong> {record.long_name}
+                                </>
+                            ),
+                            labels: { confirm: 'Delete', cancel: 'Cancel' },
+                            confirmProps: { color: 'red' },
+                            onConfirm: () => onDelete(record.id),
+                        });
                     }}
                 >
                     Delete

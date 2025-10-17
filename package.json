@@ -23,6 +23,7 @@
     "@hookform/resolvers": "^5.2.2",
     "@mantine/core": "^8.3.4",
     "@mantine/hooks": "^8.3.4",
+    "@mantine/modals": "^8.3.4",
     "@mantine/notifications": "^8.3.4",
     "@next/bundle-analyzer": "^15.5.4",
     "@tabler/icons-react": "^3.35.0",

@@ -2,6 +2,7 @@
 
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Notifications } from '@mantine/notifications';
+import { ModalsProvider } from '@mantine/modals';
 import { useState } from 'react';
 
 export function Providers({ children }: { children: React.ReactNode }) {
@@ -19,8 +20,10 @@ export function Providers({ children }: { children: React.ReactNode }) {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <Notifications position="bottom-right" zIndex={1000} />
-      {children}
+      <ModalsProvider>
+        <Notifications position="bottom-right" zIndex={1000} />
+        {children}
+      </ModalsProvider>
     </QueryClientProvider>
   );
 }
