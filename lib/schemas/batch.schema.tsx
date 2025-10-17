@@ -23,14 +23,28 @@ export const changeItemStatusSchema = z.object({
     .nullable()
     .refine((date) => {
       if (!date) return false;
-      // Ensure the date is not in the past
+      // Ensure the date is in the future (not today or past)
       const today = new Date();
       today.setHours(0, 0, 0, 0);
-      return date >= today;
-    }, { message: 'Effectivity date must be today or in the future' }),
+      const selectedDate = new Date(date);
+      selectedDate.setHours(0, 0, 0, 0);
+      return selectedDate > today;
+    }, { message: 'Effectivity date must be in the future (not today)' }),
+
+  cost: z.string().optional(),
+  price: z.string().optional(),
 
   dept: z.string().optional(),
   deptnm: z.string().optional(),
+}).refine((data) => {
+  // If status is ACTIVE, new_cost and new_price are required
+  if (data.sku_status === 'ACTIVE') {
+    return data.cost && data.cost.trim() !== '' && data.price && data.price.trim() !== '';
+  }
+  return true;
+}, {
+  message: 'New Cost and New Price are required when status is ACTIVE',
+  path: ['sku_status'],
 });
 
 export type ChangeItemStatusInput = z.infer<typeof changeItemStatusSchema>;

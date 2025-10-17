@@ -79,17 +79,15 @@ export default function ChangeItemStatusPage() {
         long_name: '',
         sku_status: '',
         effectivity_date: null,
+        cost: '',
+        price: '',
         dept: '',
         deptnm: '',
         },
     });
 
-    // Fetch batch records
-    // const { data: batchRecords, isLoading: isLoadingRecords, refetch: refetchRecords } = useQuery({
-    //     queryKey: ['batchRecords', batchNumber],
-    //     queryFn: () => fetchBatchRecordsById(batchNumber || ''),
-    //     enabled: !!batchNumber,
-    // });
+    // Watch the sku_status field to conditionally show/hide new_cost and new_price
+    const selectedStatus = watch('sku_status');
 
     const validateBarcodeMutation = useMutation({
         mutationFn: ({ barcode, batchNumber }: { barcode: string; batchNumber: string }) =>
@@ -209,7 +207,12 @@ export default function ChangeItemStatusPage() {
         const formattedDate = pendingFormData.effectivity_date instanceof Date
         ? pendingFormData.effectivity_date.toISOString().split('T')[0]
         : pendingFormData.effectivity_date;
-
+        console.log({
+            ...pendingFormData,
+            effectivity_date: formattedDate,
+            batch_number: batchNumber,
+            request_type: 'change_status'
+        })
         saveBatchRecordMutation.mutate({
             ...pendingFormData,
             effectivity_date: formattedDate,
@@ -489,6 +492,69 @@ export default function ChangeItemStatusPage() {
                     />
                     </Box>
                 </Grid.Col>
+
+                {/* Conditional fields - only show when ACTIVE status is selected */}
+                {selectedStatus === 'ACTIVE' && (
+                    <>
+                    <Grid.Col span={12}>
+                        <Box>
+                        <Text size="sm" fw={600} mb={rem(8)} c="#495057">
+                            NEW COST
+                        </Text>
+                        <Controller
+                            name="cost"
+                            control={control}
+                            render={({ field }) => (
+                            <TextInput
+                                {...field}
+                                placeholder="Enter new cost"
+                                size="md"
+                                type="number"
+                                step="0.01"
+                                error={errors.cost?.message}
+                                styles={{
+                                input: {
+                                    border: '1px solid #dee2e6',
+                                    borderRadius: rem(4),
+                                    fontSize: rem(14),
+                                },
+                                }}
+                            />
+                            )}
+                        />
+                        </Box>
+                    </Grid.Col>
+
+                    <Grid.Col span={12}>
+                        <Box>
+                        <Text size="sm" fw={600} mb={rem(8)} c="#495057">
+                            NEW PRICE
+                        </Text>
+                        <Controller
+                            name="price"
+                            control={control}
+                            render={({ field }) => (
+                            <TextInput
+                                {...field}
+                                placeholder="Enter new price"
+                                size="md"
+                                type="number"
+                                step="0.01"
+                                error={errors.price?.message}
+                                styles={{
+                                input: {
+                                    border: '1px solid #dee2e6',
+                                    borderRadius: rem(4),
+                                    fontSize: rem(14),
+                                },
+                                }}
+                            />
+                            )}
+                        />
+                        </Box>
+                    </Grid.Col>
+                    </>
+                )}
                 </Grid>
             </Box>
 
@@ -656,6 +722,18 @@ export default function ChangeItemStatusPage() {
                                         : 'N/A'}
                                 </Text>
                             </Group>
+                            {pendingFormData.cost && (
+                                <Group justify="space-between">
+                                    <Text size="sm" fw={600}>New Cost:</Text>
+                                    <Text size="sm">{pendingFormData.cost}</Text>
+                                </Group>
+                            )}
+                            {pendingFormData.price && (
+                                <Group justify="space-between">
+                                    <Text size="sm" fw={600}>New Price:</Text>
+                                    <Text size="sm">{pendingFormData.price}</Text>
+                                </Group>
+                            )}
                         </Stack>
                     </Paper>
                 )}
