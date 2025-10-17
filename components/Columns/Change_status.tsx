@@ -4,9 +4,10 @@ import { createBadgeRenderer } from '@/lib/dataTableHelper';
 
 interface ChangeStatusColumnsProps {
     onDelete: (recordId: number) => void;
+    onEdit: (record: any) => void;
 }
 
-export const getChangeStatusColumns = ({ onDelete }: ChangeStatusColumnsProps) => [
+export const getChangeStatusColumns = ({ onDelete, onEdit }: ChangeStatusColumnsProps) => [
     {
         accessor: 'barcode',
         title: 'Barcode',
@@ -37,10 +38,18 @@ export const getChangeStatusColumns = ({ onDelete }: ChangeStatusColumnsProps) =
     {
         accessor: 'actions',
         title: 'Actions',
-        width: 100,
+        width: 150,
         textAlign: 'center' as const,
         render: (record: any) => (
             <Group gap="xs" justify="center">
+                <Button
+                    size="xs"
+                    variant="light"
+                    color="blue"
+                    onClick={() => onEdit(record)}
+                >
+                    Edit
+                </Button>
                 <Button
                     size="xs"
                     variant="light"

@@ -41,6 +41,8 @@ export default function ChangeItemStatusPage() {
     const [currentSkuStatus, setCurrentSkuStatus] = useState<string>('');
     const [confirmModalOpened, setConfirmModalOpened] = useState(false);
     const [pendingFormData, setPendingFormData] = useState<ChangeItemStatusInput | null>(null);
+    const [editModalOpened, setEditModalOpened] = useState(false);
+    const [editingRecord, setEditingRecord] = useState<any>(null);
 
     const { data: batchRecords, isLoading:isLoadingRecords, error } = useQuery({
         queryKey: ['batchRecords', batchNumber, PAGE_TYPE],
@@ -88,6 +90,31 @@ export default function ChangeItemStatusPage() {
 
     // Watch the sku_status field to conditionally show/hide new_cost and new_price
     const selectedStatus = watch('sku_status');
+
+    // Separate form for editing records
+    const {
+        control: editControl,
+        handleSubmit: handleEditSubmit,
+        setValue: setEditValue,
+        watch: watchEdit,
+        reset: resetEdit,
+        formState: { errors: editErrors },
+    } = useForm<ChangeItemStatusInput>({
+        resolver: zodResolver(changeItemStatusSchema),
+        defaultValues: {
+            barcode: '',
+            sku: '',
+            long_name: '',
+            sku_status: '',
+            effectivity_date: null,
+            cost: '',
+            price: '',
+            dept: '',
+            deptnm: '',
+        },
+    });
+
+    const editSelectedStatus = watchEdit('sku_status');
 
     const validateBarcodeMutation = useMutation({
         mutationFn: ({ barcode, batchNumber }: { barcode: string; batchNumber: string }) =>
@@ -192,6 +219,61 @@ export default function ChangeItemStatusPage() {
             request_type:PAGE_TYPE
         });
         // console.log(recordId);
+    };
+
+    const handleEditRecord = (record: any) => {
+        // Store the record being edited
+        setEditingRecord(record);
+
+        // Populate edit form fields with record data (ensure cost and price are strings)
+        setEditValue('barcode', record.barcode ? String(record.barcode) : '');
+        setEditValue('sku', record.sku ? String(record.sku) : '');
+        setEditValue('long_name', record.long_name || '');
+        setEditValue('sku_status', record.sku_status || '');
+        setEditValue('effectivity_date', record.effectivity_date ? new Date(record.effectivity_date) : null);
+        setEditValue('cost', record.cost ? String(record.cost) : '');
+        setEditValue('price', record.price ? String(record.price) : '');
+        setEditValue('dept', record.dept || '');
+        setEditValue('deptnm', record.deptnm || '');
+
+        // Open edit modal
+        setEditModalOpened(true);
+    };
+
+    const onEditSubmit = (data: ChangeItemStatusInput) => {
+        console.log('Edit form submitted:', data);
+        console.log('dsadsadas');
+
+        const formattedDate = data.effectivity_date instanceof Date
+            ? data.effectivity_date.toISOString().split('T')[0]
+            : data.effectivity_date;
+
+        // Update the record with new data
+        // saveBatchRecordMutation.mutate({
+        //     ...data,
+        //     effectivity_date: formattedDate,
+        //     batch_number: batchNumber,
+        //     request_type: 'change_status',
+        //     record_id: editingRecord?.id, // Include record ID for update
+        // });
+
+        // // Close modal and reset
+        // setEditModalOpened(false);
+        // setEditingRecord(null);
+        // resetEdit();
+        console.log({
+            ...data,
+            effectivity_date: formattedDate,
+            batch_number: batchNumber,
+            request_type: 'change_status',
+            record_id: editingRecord?.id, // Include record ID for update
+        })
+    };
+
+    const handleCancelEdit = () => {
+        setEditModalOpened(false);
+        setEditingRecord(null);
+        resetEdit();
     };
 
     const onSubmit = (data: ChangeItemStatusInput) => {
@@ -507,6 +589,8 @@ export default function ChangeItemStatusPage() {
                             render={({ field }) => (
                             <TextInput
                                 {...field}
+                                value={field.value || ''}
+                                onChange={(e) => field.onChange(e.target.value)}
                                 placeholder="Enter new cost"
                                 size="md"
                                 type="number"
@@ -536,6 +620,8 @@ export default function ChangeItemStatusPage() {
                             render={({ field }) => (
                             <TextInput
                                 {...field}
+                                value={field.value || ''}
+                                onChange={(e) => field.onChange(e.target.value)}
                                 placeholder="Enter new price"
                                 size="md"
                                 type="number"
@@ -607,7 +693,10 @@ export default function ChangeItemStatusPage() {
                 data={batchRecords || []}
                 isLoading={isLoadingRecords}
                 emptyMessage="No encoded records yet."
-                columns={getChangeStatusColumns({ onDelete: handleDeleteRecord })}
+                columns={getChangeStatusColumns({
+                    onDelete: handleDeleteRecord,
+                    onEdit: handleEditRecord
+                })}
             />
             {/* <SimpleDataTable
                 data={batchRecords || []}
@@ -760,6 +849,297 @@ export default function ChangeItemStatusPage() {
                     </Button>
                 </Group>
             </Stack>
+        </Modal>
+
+        {/* Edit Record Modal */}
+        <Modal
+            opened={editModalOpened}
+            onClose={handleCancelEdit}
+            title="Update Record"
+            centered
+            size="lg"
+            styles={{
+                title: {
+                    fontSize: rem(18),
+                    fontWeight: 700,
+                    backgroundColor: '#50b5a4',
+                    color: 'white',
+                    margin: rem(-16),
+                    marginBottom: rem(20),
+                    padding: `${rem(16)} ${rem(20)}`,
+                },
+                header: {
+                    backgroundColor: '#50b5a4',
+                    marginBottom: 0,
+                },
+                body: {
+                    padding: rem(20),
+                },
+            }}
+        >
+            {/* <form onSubmit={handleEditSubmit(onEditSubmit, (errors) => {
+                console.log('Edit form validation errors:', errors);
+            })}> */}
+                <form onSubmit={handleEditSubmit(onEditSubmit)}>
+                <Stack gap="lg">
+                    {/* ITEM DETAILS Section */}
+                    <Box>
+                        <Text size="sm" fw={700} mb="md" c="#495057" tt="uppercase">
+                            Item Details
+                        </Text>
+
+                        {/* Description */}
+                        <Box mb="md">
+                            <Text size="sm" fw={600} mb={rem(8)} c="#495057" tt="uppercase">
+                                Description :
+                            </Text>
+                            <TextInput
+                                value={editingRecord?.long_name || ''}
+                                readOnly
+                                size="md"
+                                styles={{
+                                    input: {
+                                        border: '1px solid #dee2e6',
+                                        borderRadius: rem(4),
+                                        fontSize: rem(14),
+                                        backgroundColor: '#f8f9fa',
+                                        color: '#495057',
+                                        textAlign: 'center',
+                                    },
+                                }}
+                            />
+                        </Box>
+
+                        {/* UPC, SKU, Current Status in 3 columns */}
+                        <Grid gutter="md">
+                            <Grid.Col span={4}>
+                                <Text size="sm" fw={600} mb={rem(8)} c="#495057" tt="uppercase">
+                                    UPC :
+                                </Text>
+                                <TextInput
+                                    value={editingRecord?.barcode || ''}
+                                    readOnly
+                                    size="md"
+                                    styles={{
+                                        input: {
+                                            border: '1px solid #dee2e6',
+                                            borderRadius: rem(4),
+                                            fontSize: rem(14),
+                                            backgroundColor: '#f8f9fa',
+                                            color: '#495057',
+                                        },
+                                    }}
+                                />
+                            </Grid.Col>
+
+                            <Grid.Col span={4}>
+                                <Text size="sm" fw={600} mb={rem(8)} c="#495057" tt="uppercase">
+                                    SKU :
+                                </Text>
+                                <TextInput
+                                    value={editingRecord?.sku || ''}
+                                    readOnly
+                                    size="md"
+                                    styles={{
+                                        input: {
+                                            border: '1px solid #dee2e6',
+                                            borderRadius: rem(4),
+                                            fontSize: rem(14),
+                                            backgroundColor: '#f8f9fa',
+                                            color: '#495057',
+                                        },
+                                    }}
+                                />
+                            </Grid.Col>
+
+                            <Grid.Col span={4}>
+                                <Text size="sm" fw={600} mb={rem(8)} c="#495057" tt="uppercase">
+                                    Current SKU Status :
+                                </Text>
+                                <TextInput
+                                    value={editingRecord?.current_sku_status || ''}
+                                    readOnly
+                                    size="md"
+                                    styles={{
+                                        input: {
+                                            border: '1px solid #dee2e6',
+                                            borderRadius: rem(4),
+                                            fontSize: rem(14),
+                                            backgroundColor: '#f8f9fa',
+                                            color: '#495057',
+                                            textTransform: 'uppercase',
+                                        },
+                                    }}
+                                />
+                            </Grid.Col>
+                        </Grid>
+                    </Box>
+
+                    <Divider />
+
+                    {/* UPDATE FIELDS Section */}
+                    <Box>
+                        <Text size="sm" fw={700} mb="md" c="#495057" tt="uppercase">
+                            Update Fields
+                        </Text>
+
+                        <Grid gutter="md">
+                            {/* Change SKU Status */}
+                            <Grid.Col span={6}>
+                                <Text size="sm" fw={600} mb={rem(8)} c="#495057" tt="uppercase">
+                                    Change SKU Status :
+                                </Text>
+                                <Controller
+                                    name="sku_status"
+                                    control={editControl}
+                                    render={({ field }) => (
+                                        <Select
+                                            {...field}
+                                            placeholder="-- SELECT ITEM STATUS --"
+                                            size="md"
+                                            data={statusOptions}
+                                            error={editErrors.sku_status?.message}
+                                            styles={{
+                                                input: {
+                                                    border: '1px solid #dee2e6',
+                                                    borderRadius: rem(4),
+                                                    fontSize: rem(14),
+                                                },
+                                            }}
+                                        />
+                                    )}
+                                />
+                            </Grid.Col>
+
+                            {/* Effectivity Date */}
+                            <Grid.Col span={6}>
+                                <Text size="sm" fw={600} mb={rem(8)} c="#495057" tt="uppercase">
+                                    Effectivity Date :
+                                </Text>
+                                <Controller
+                                    name="effectivity_date"
+                                    control={editControl}
+                                    render={({ field }) => (
+                                        <TextInput
+                                            type="date"
+                                            size="md"
+                                            value={field.value ? new Date(field.value).toISOString().split('T')[0] : ''}
+                                            onChange={(e) => field.onChange(e.target.value ? new Date(e.target.value) : null)}
+                                            error={editErrors.effectivity_date?.message}
+                                            styles={{
+                                                input: {
+                                                    border: '1px solid #dee2e6',
+                                                    borderRadius: rem(4),
+                                                    fontSize: rem(14),
+                                                },
+                                            }}
+                                        />
+                                    )}
+                                />
+                            </Grid.Col>
+
+                            {/* Conditional fields - only show when ACTIVE status is selected */}
+                            {editSelectedStatus === 'ACTIVE' && (
+                                <>
+                                    <Grid.Col span={6}>
+                                        <Text size="sm" fw={600} mb={rem(8)} c="#495057" tt="uppercase">
+                                            New Cost :
+                                        </Text>
+                                        <Controller
+                                            name="cost"
+                                            control={editControl}
+                                            render={({ field }) => (
+                                                <TextInput
+                                                    {...field}
+                                                    value={field.value || ''}
+                                                    onChange={(e) => field.onChange(e.target.value)}
+                                                    placeholder="Enter new cost"
+                                                    size="md"
+                                                    type="number"
+                                                    step="0.01"
+                                                    error={editErrors.cost?.message}
+                                                    styles={{
+                                                        input: {
+                                                            border: '1px solid #dee2e6',
+                                                            borderRadius: rem(4),
+                                                            fontSize: rem(14),
+                                                        },
+                                                    }}
+                                                />
+                                            )}
+                                        />
+                                    </Grid.Col>
+
+                                    <Grid.Col span={6}>
+                                        <Text size="sm" fw={600} mb={rem(8)} c="#495057" tt="uppercase">
+                                            New Price :
+                                        </Text>
+                                        <Controller
+                                            name="price"
+                                            control={editControl}
+                                            render={({ field }) => (
+                                                <TextInput
+                                                    {...field}
+                                                    value={field.value || ''}
+                                                    onChange={(e) => field.onChange(e.target.value)}
+                                                    placeholder="Enter new price"
+                                                    size="md"
+                                                    type="number"
+                                                    step="0.01"
+                                                    error={editErrors.price?.message}
+                                                    styles={{
+                                                        input: {
+                                                            border: '1px solid #dee2e6',
+                                                            borderRadius: rem(4),
+                                                            fontSize: rem(14),
+                                                        },
+                                                    }}
+                                                />
+                                            )}
+                                        />
+                                    </Grid.Col>
+                                </>
+                            )}
+                        </Grid>
+                    </Box>
+
+                    {/* Action Buttons */}
+                    <Group justify="flex-end" gap="md" mt="md">
+                        <Button
+                            variant="filled"
+                            color="orange"
+                            onClick={handleCancelEdit}
+                            size="md"
+                            styles={{
+                                root: {
+                                    backgroundColor: '#ff8c42',
+                                    '&:hover': {
+                                        backgroundColor: '#ff7829',
+                                    },
+                                },
+                            }}
+                        >
+                            Close
+                        </Button>
+                        <Button
+                            type="submit"
+                            color="cyan"
+                            size="md"
+                            loading={saveBatchRecordMutation.isPending}
+                            styles={{
+                                root: {
+                                    backgroundColor: '#50b5a4',
+                                    '&:hover': {
+                                        backgroundColor: '#429a8c',
+                                    },
+                                },
+                            }}
+                        >
+                            Update
+                        </Button>
+                    </Group>
+                </Stack>
+            </form>
         </Modal>
         </Box>
     );
