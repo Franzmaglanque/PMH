@@ -42,6 +42,7 @@ export default function ChangeItemStatusPage() {
     const [pendingFormData, setPendingFormData] = useState<ChangeItemStatusInput | null>(null);
     const [editModalOpened, setEditModalOpened] = useState(false);
     const [editingRecord, setEditingRecord] = useState<any>(null);
+    const [postBatchModalOpened, setPostBatchModalOpened] = useState(false);
 
     const { data: batchRecords, isLoading:isLoadingRecords, error } = useQuery({
         queryKey: ['batchRecords', batchNumber, PAGE_TYPE],
@@ -351,14 +352,29 @@ export default function ChangeItemStatusPage() {
     const handleGoBack = () => {
         router.push('/batch');
     };
-    
+
     const handlePostBatch = () => {
+        if (!batchRecords || batchRecords.length === 0) {
+            showErrorNotification(
+                'Cannot Post Batch',
+                'Please encode at least one item before posting the batch.'
+            );
+            return;
+        }
+        setPostBatchModalOpened(true);
+    }
+
+    const handleConfirmPostBatch = () => {
         postBatchMutation.mutate({
             batch_number: batchNumber,
             request_type: PAGE_TYPE
-        })
-        console.log('post');
-    }
+        });
+        setPostBatchModalOpened(false);
+    };
+
+    const handleCancelPostBatch = () => {
+        setPostBatchModalOpened(false);
+    };
 
     // Create debounced callback for UPC validation
     const validateUpc = useDebouncedInput((upcValue: string) => {
@@ -387,20 +403,42 @@ export default function ChangeItemStatusPage() {
                 BATCH # {batchNumber || '78'}
             </Title>
             <Button
-                color="green"
-                size="md"
-                rightSection={<IconCheck size={18} />}
+                size="lg"
+                rightSection={<IconCheck size={20} />}
+                disabled={!batchRecords || batchRecords.length === 0}
                 styles={{
-                root: {
-                    backgroundColor: '#82c43c',
-                    '&:hover': {
-                    backgroundColor: '#6fb32e',
+                    root: {
+                        backgroundColor: '#82c43c',
+                        color: '#ffffff',
+                        fontWeight: 600,
+                        fontSize: rem(15),
+                        paddingLeft: rem(24),
+                        paddingRight: rem(24),
+                        height: rem(44),
+                        borderRadius: rem(8),
+                        border: 'none',
+                        boxShadow: '0 2px 8px rgba(130, 196, 60, 0.3)',
+                        transition: 'all 0.2s ease',
+                        '&:hover': {
+                            backgroundColor: '#6fb32e',
+                            boxShadow: '0 4px 12px rgba(130, 196, 60, 0.4)',
+                            transform: 'translateY(-1px)',
+                        },
+                        '&:active': {
+                            transform: 'translateY(0)',
+                            boxShadow: '0 2px 6px rgba(130, 196, 60, 0.3)',
+                        },
+                        '&:disabled': {
+                            backgroundColor: '#e9ecef',
+                            color: '#adb5bd',
+                            boxShadow: 'none',
+                            cursor: 'not-allowed',
+                        },
                     },
-                },
                 }}
                 onClick={handlePostBatch}
             >
-                Submit Batch
+                Post Batch
             </Button>
             </Group>
 
@@ -1136,6 +1174,92 @@ export default function ChangeItemStatusPage() {
                     </Group>
                 </Stack>
             </form>
+        </Modal>
+
+        {/* Post Batch Confirmation Modal */}
+        <Modal
+            opened={postBatchModalOpened}
+            onClose={handleCancelPostBatch}
+            title={
+                <Group gap="xs">
+                    <IconCheck size={24} style={{ color: '#82c43c' }} />
+                    <Text fw={700} size="lg">Confirm Post Batch</Text>
+                </Group>
+            }
+            centered
+            size="md"
+            styles={{
+                title: {
+                    width: '100%',
+                },
+            }}
+        >
+            <Stack gap="lg">
+                <Text size="sm" c="dimmed">
+                    You are about to post this batch. Once posted, the batch will be submitted and no further changes can be made.
+                </Text>
+
+                <Paper p="md" withBorder style={{ backgroundColor: '#fff3cd', borderColor: '#ffc107' }}>
+                    <Group gap="xs" mb="xs">
+                        <Text size="sm" fw={700} c="#856404">
+                            Warning:
+                        </Text>
+                    </Group>
+                    <Text size="sm" c="#856404">
+                        This action will finalize the batch and all encoded records. Make sure all records are correct before proceeding.
+                    </Text>
+                </Paper>
+
+                <Box>
+                    <Text size="sm" fw={600} mb="xs">Batch Details:</Text>
+                    <Paper p="md" withBorder style={{ backgroundColor: '#f8f9fa' }}>
+                        <Stack gap="xs">
+                            <Group justify="space-between">
+                                <Text size="sm" fw={600}>Batch Number:</Text>
+                                <Text size="sm">{batchNumber}</Text>
+                            </Group>
+                            <Group justify="space-between">
+                                <Text size="sm" fw={600}>Request Type:</Text>
+                                <Badge color="blue" variant="light">CHANGE STATUS</Badge>
+                            </Group>
+                            <Group justify="space-between">
+                                <Text size="sm" fw={600}>Total Records:</Text>
+                                <Badge color="gray" variant="filled">{batchRecords?.length || 0}</Badge>
+                            </Group>
+                        </Stack>
+                    </Paper>
+                </Box>
+
+                <Text size="sm" c="dimmed" fw={600}>
+                    Do you want to proceed with posting this batch?
+                </Text>
+
+                <Group justify="flex-end" gap="md" mt="md">
+                    <Button
+                        variant="light"
+                        color="gray"
+                        onClick={handleCancelPostBatch}
+                    >
+                        Cancel
+                    </Button>
+                    <Button
+                        color="green"
+                        leftSection={<IconCheck size={18} />}
+                        onClick={handleConfirmPostBatch}
+                        loading={postBatchMutation.isPending}
+                        styles={{
+                            root: {
+                                backgroundColor: '#82c43c',
+                                '&:hover': {
+                                    backgroundColor: '#6fb32e',
+                                },
+                            },
+                        }}
+                    >
+                        Confirm & Post Batch
+                    </Button>
+                </Group>
+            </Stack>
         </Modal>
         </Box>
     );

@@ -47,9 +47,7 @@ export const postBatch = async (params:any) => {
         if (!response.ok) {
             throw new Error('Failed to post batch');
         }
-
-        const result = await response.json();
-        return result.data || [];
+        return await response.json();
     } catch (error) {
         console.log(error);
         throw error;
