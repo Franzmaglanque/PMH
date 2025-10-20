@@ -15,7 +15,7 @@ export const changeItemStatusSchema = z.object({
   sku_status: z.string()
     .min(1, 'SKU status is required')
     .refine(
-      (val) => ['ACTIVE', 'INACTIVE', 'NOT TO BE REORDERED', 'TO BE PURGED'].includes(val),
+      (val) => ['active', 'inactive', 'not to be reordered', 'to be purged'].includes(val),
       { message: 'Invalid SKU status selected' }
     ),
 
@@ -37,13 +37,13 @@ export const changeItemStatusSchema = z.object({
   dept: z.string().optional(),
   deptnm: z.string().optional(),
 }).refine((data) => {
-  // If status is ACTIVE, new_cost and new_price are required
-  if (data.sku_status === 'ACTIVE') {
+  // If status is active, cost and price are required
+  if (data.sku_status === 'active') {
     return data.cost && data.cost.trim() !== '' && data.price && data.price.trim() !== '';
   }
   return true;
 }, {
-  message: 'New Cost and New Price are required when status is ACTIVE',
+  message: 'New Cost and New Price are required when status is active',
   path: ['sku_status'],
 });
 

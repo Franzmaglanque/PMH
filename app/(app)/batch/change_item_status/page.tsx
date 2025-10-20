@@ -23,7 +23,7 @@ import { useState, useEffect } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useQuery, useMutation,useQueryClient } from "@tanstack/react-query";
-import { validateBarcode, fetchBatchRecordsById,saveBatchRecord,fetchBatchRecords,deleteBatchRecord } from '@/app/api/batch_request_api';
+import { validateBarcode, fetchBatchRecordsById,saveBatchRecord,fetchBatchRecords,deleteBatchRecord,updateBatchRecord,postBatch } from '@/app/api/batch_request_api';
 import { showSuccessNotification, showErrorNotification } from '@/lib/notifications';
 import { useDebouncedInput } from '@/lib/debounce';
 import { useNumericInput } from '@/lib/inputHelpers';
@@ -37,7 +37,6 @@ export default function ChangeItemStatusPage() {
     const queryClient = useQueryClient();
     const searchParams = useSearchParams();
     const batchNumber = searchParams.get('batch_number');
-    // const [batchNumber, setBatchNumber] = useState<string | null>(null);
     const [currentSkuStatus, setCurrentSkuStatus] = useState<string>('');
     const [confirmModalOpened, setConfirmModalOpened] = useState(false);
     const [pendingFormData, setPendingFormData] = useState<ChangeItemStatusInput | null>(null);
@@ -50,20 +49,6 @@ export default function ChangeItemStatusPage() {
         enabled: !!batchNumber,
         retry: false, // Don't retry on validation errors
     });
-
-    // IF USING SESSION STORAGE
-    // useEffect(() => {
-    //     const storedBatchNumber = sessionStorage.getItem('current_batch_number');
-    //     if (storedBatchNumber) {
-    //         setBatchNumber(storedBatchNumber);
-    //         // Optionally clear it after reading
-    //         // sessionStorage.removeItem('current_batch_number');
-    //     } else {
-    //         // If no batch number in session, redirect back to batch page
-    //         showErrorNotification('No Batch Selected', 'Please select or create a batch first');
-    //         router.push('/batch');
-    //     }
-    // }, [router]);
 
     const {
         register,
@@ -185,6 +170,37 @@ export default function ChangeItemStatusPage() {
         },
     });
 
+    const updateBatchRecordMutation = useMutation({
+        mutationFn: updateBatchRecord,
+        onSuccess: (data) => {
+            console.log('API Response:', data);
+
+            if (data.status) {
+                showSuccessNotification(
+                    'Item Update',
+                    data.message
+                );
+                queryClient.invalidateQueries({
+                    queryKey: ['batchRecords', batchNumber, PAGE_TYPE]
+                });
+                resetEdit();
+            } else {
+                resetEdit();
+                showErrorNotification(
+                    'Update record failed',
+                    data.message || 'Please Contact buyer for assistance'
+                );
+            }
+        },
+        onError: (error) => {
+            resetEdit();
+            showErrorNotification(
+                'Update Failed',
+                error instanceof Error ? error.message : 'Failed to update record'
+            );
+        },
+    });
+
     const deleteBatchRecordMutation = useMutation({
         mutationFn: deleteBatchRecord,
         onSuccess: (data) => {
@@ -213,6 +229,34 @@ export default function ChangeItemStatusPage() {
         },
     });
 
+    const postBatchMutation = useMutation({
+        mutationFn: postBatch,
+        onSuccess: (data) => {
+            console.log('POST API Response:', data);
+
+            if (data.status) {
+                showSuccessNotification(
+                    'Batch Posted',
+                    data.message
+                );
+                queryClient.invalidateQueries({
+                    queryKey: ['batchRecords', batchNumber, PAGE_TYPE]
+                });
+            } else {
+                showErrorNotification(
+                    'Posting of batch failed',
+                    data.message || 'Failed to post batch'
+                );
+            }
+        },
+        onError: (error) => {
+            showErrorNotification(
+                'Post batch failed',
+                error instanceof Error ? error.message : 'Failed to post batch'
+            );
+        },
+    });
+
     const handleDeleteRecord = (recordId: number) => {
         deleteBatchRecordMutation.mutate({
             record_id:recordId,
@@ -223,6 +267,7 @@ export default function ChangeItemStatusPage() {
 
     const handleEditRecord = (record: any) => {
         // Store the record being edited
+        console.log('record',record);
         setEditingRecord(record);
 
         // Populate edit form fields with record data (ensure cost and price are strings)
@@ -242,32 +287,23 @@ export default function ChangeItemStatusPage() {
 
     const onEditSubmit = (data: ChangeItemStatusInput) => {
         console.log('Edit form submitted:', data);
-        console.log('dsadsadas');
 
         const formattedDate = data.effectivity_date instanceof Date
             ? data.effectivity_date.toISOString().split('T')[0]
             : data.effectivity_date;
 
         // Update the record with new data
-        // saveBatchRecordMutation.mutate({
-        //     ...data,
-        //     effectivity_date: formattedDate,
-        //     batch_number: batchNumber,
-        //     request_type: 'change_status',
-        //     record_id: editingRecord?.id, // Include record ID for update
-        // });
-
-        // // Close modal and reset
-        // setEditModalOpened(false);
-        // setEditingRecord(null);
-        // resetEdit();
-        console.log({
+        updateBatchRecordMutation.mutate({
             ...data,
             effectivity_date: formattedDate,
             batch_number: batchNumber,
             request_type: 'change_status',
             record_id: editingRecord?.id, // Include record ID for update
-        })
+        });
+
+        setEditModalOpened(false);
+        setEditingRecord(null);
+        resetEdit();
     };
 
     const handleCancelEdit = () => {
@@ -278,7 +314,7 @@ export default function ChangeItemStatusPage() {
 
     const onSubmit = (data: ChangeItemStatusInput) => {
         console.log('Form submitted (validated by Zod):', data);
-        // Store form data and open confirmation modal
+
         setPendingFormData(data);
         setConfirmModalOpened(true);
     };
@@ -315,6 +351,14 @@ export default function ChangeItemStatusPage() {
     const handleGoBack = () => {
         router.push('/batch');
     };
+    
+    const handlePostBatch = () => {
+        postBatchMutation.mutate({
+            batch_number: batchNumber,
+            request_type: PAGE_TYPE
+        })
+        console.log('post');
+    }
 
     // Create debounced callback for UPC validation
     const validateUpc = useDebouncedInput((upcValue: string) => {
@@ -328,10 +372,10 @@ export default function ChangeItemStatusPage() {
 
     const statusOptions = [
         { value: '', label: '-- SELECT ITEM STATUS --' },
-        { value: 'ACTIVE', label: 'Active' },
-        { value: 'INACTIVE', label: 'Inactive' },
-        { value: 'NOT TO BE REORDERED', label: 'Not to be Re-ordered' },
-        { value: 'TO BE PURGED', label: 'To be Purged' },
+        { value: 'active', label: 'Active' },
+        { value: 'inactive', label: 'Inactive' },
+        { value: 'not to be reordered', label: 'Not to be Re-ordered' },
+        { value: 'to be purged', label: 'To be Purged' },
     ];
 
     return (
@@ -354,6 +398,7 @@ export default function ChangeItemStatusPage() {
                     },
                 },
                 }}
+                onClick={handlePostBatch}
             >
                 Submit Batch
             </Button>
@@ -575,8 +620,8 @@ export default function ChangeItemStatusPage() {
                     </Box>
                 </Grid.Col>
 
-                {/* Conditional fields - only show when ACTIVE status is selected */}
-                {selectedStatus === 'ACTIVE' && (
+                {/* Conditional fields - only show when active status is selected */}
+                {selectedStatus === 'active' && (
                     <>
                     <Grid.Col span={12}>
                         <Box>
@@ -588,13 +633,16 @@ export default function ChangeItemStatusPage() {
                             control={control}
                             render={({ field }) => (
                             <TextInput
-                                {...field}
                                 value={field.value || ''}
-                                onChange={(e) => field.onChange(e.target.value)}
+                                onChange={(e) => {
+                                    const value = e.target.value;
+                                    // Only allow digits and decimal point
+                                    if (/^\d*\.?\d*$/.test(value)) {
+                                        field.onChange(value);
+                                    }
+                                }}
                                 placeholder="Enter new cost"
                                 size="md"
-                                type="number"
-                                step="0.01"
                                 error={errors.cost?.message}
                                 styles={{
                                 input: {
@@ -619,13 +667,16 @@ export default function ChangeItemStatusPage() {
                             control={control}
                             render={({ field }) => (
                             <TextInput
-                                {...field}
                                 value={field.value || ''}
-                                onChange={(e) => field.onChange(e.target.value)}
+                                onChange={(e) => {
+                                    const value = e.target.value;
+                                    // Only allow digits and decimal point
+                                    if (/^\d*\.?\d*$/.test(value)) {
+                                        field.onChange(value);
+                                    }
+                                }}
                                 placeholder="Enter new price"
                                 size="md"
-                                type="number"
-                                step="0.01"
                                 error={errors.price?.message}
                                 styles={{
                                 input: {
@@ -698,67 +749,6 @@ export default function ChangeItemStatusPage() {
                     onEdit: handleEditRecord
                 })}
             />
-            {/* <SimpleDataTable
-                data={batchRecords || []}
-                isLoading={isLoadingRecords}
-                emptyMessage="No encoded records yet."
-                columns={[
-                    {
-                        accessor: 'upc',
-                        title: 'UPC',
-                        width: 150,
-                        ellipsis: true,
-                    },
-                    {
-                        accessor: 'sku',
-                        title: 'SKU #',
-                        width: 120,
-                    },
-                    {
-                        accessor: 'description',
-                        title: 'Description',
-                        ellipsis: true,
-                    },
-                    {
-                        accessor: 'current_status',
-                        title: 'Current Status',
-                        width: 150,
-                        render: createBadgeRenderer('current_status', 'gray', 'light'),
-                    },
-                    {
-                        accessor: 'new_status',
-                        title: 'New Status',
-                        width: 150,
-                        render: createBadgeRenderer('new_status', 'blue', 'filled'),
-                    },
-                    {
-                        accessor: 'effectivity_date',
-                        title: 'Effectivity Date',
-                        width: 140,
-                    },
-                    {
-                        accessor: 'actions',
-                        title: 'Actions',
-                        width: 100,
-                        textAlign: 'center',
-                        render: (record: any) => (
-                            <Group gap="xs" justify="center">
-                                <Button
-                                    size="xs"
-                                    variant="light"
-                                    color="red"
-                                    onClick={() => {
-                                        // Add delete logic here
-                                        console.log('Delete clicked', record);
-                                    }}
-                                >
-                                    Delete
-                                </Button>
-                            </Group>
-                        ),
-                    },
-                ]}
-            /> */}
         </Box>
 
         {/* Confirmation Modal */}
@@ -912,7 +902,7 @@ export default function ChangeItemStatusPage() {
 
                         {/* UPC, SKU, Current Status in 3 columns */}
                         <Grid gutter="md">
-                            <Grid.Col span={4}>
+                            <Grid.Col span={6}>
                                 <Text size="sm" fw={600} mb={rem(8)} c="#495057" tt="uppercase">
                                     UPC :
                                 </Text>
@@ -932,7 +922,7 @@ export default function ChangeItemStatusPage() {
                                 />
                             </Grid.Col>
 
-                            <Grid.Col span={4}>
+                            <Grid.Col span={6}>
                                 <Text size="sm" fw={600} mb={rem(8)} c="#495057" tt="uppercase">
                                     SKU :
                                 </Text>
@@ -952,7 +942,7 @@ export default function ChangeItemStatusPage() {
                                 />
                             </Grid.Col>
 
-                            <Grid.Col span={4}>
+                            {/* <Grid.Col span={4}>
                                 <Text size="sm" fw={600} mb={rem(8)} c="#495057" tt="uppercase">
                                     Current SKU Status :
                                 </Text>
@@ -971,7 +961,7 @@ export default function ChangeItemStatusPage() {
                                         },
                                     }}
                                 />
-                            </Grid.Col>
+                            </Grid.Col> */}
                         </Grid>
                     </Box>
 
@@ -1038,8 +1028,8 @@ export default function ChangeItemStatusPage() {
                                 />
                             </Grid.Col>
 
-                            {/* Conditional fields - only show when ACTIVE status is selected */}
-                            {editSelectedStatus === 'ACTIVE' && (
+                            {/* Conditional fields - only show when active status is selected */}
+                            {editSelectedStatus === 'active' && (
                                 <>
                                     <Grid.Col span={6}>
                                         <Text size="sm" fw={600} mb={rem(8)} c="#495057" tt="uppercase">
@@ -1050,13 +1040,16 @@ export default function ChangeItemStatusPage() {
                                             control={editControl}
                                             render={({ field }) => (
                                                 <TextInput
-                                                    {...field}
                                                     value={field.value || ''}
-                                                    onChange={(e) => field.onChange(e.target.value)}
+                                                    onChange={(e) => {
+                                                        const value = e.target.value;
+                                                        // Only allow digits and decimal point
+                                                        if (/^\d*\.?\d*$/.test(value)) {
+                                                            field.onChange(value);
+                                                        }
+                                                    }}
                                                     placeholder="Enter new cost"
                                                     size="md"
-                                                    type="number"
-                                                    step="0.01"
                                                     error={editErrors.cost?.message}
                                                     styles={{
                                                         input: {
@@ -1079,13 +1072,16 @@ export default function ChangeItemStatusPage() {
                                             control={editControl}
                                             render={({ field }) => (
                                                 <TextInput
-                                                    {...field}
                                                     value={field.value || ''}
-                                                    onChange={(e) => field.onChange(e.target.value)}
+                                                    onChange={(e) => {
+                                                        const value = e.target.value;
+                                                        // Only allow digits and decimal point
+                                                        if (/^\d*\.?\d*$/.test(value)) {
+                                                            field.onChange(value);
+                                                        }
+                                                    }}
                                                     placeholder="Enter new price"
                                                     size="md"
-                                                    type="number"
-                                                    step="0.01"
                                                     error={editErrors.price?.message}
                                                     styles={{
                                                         input: {
