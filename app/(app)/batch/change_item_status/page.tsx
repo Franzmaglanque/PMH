@@ -243,6 +243,8 @@ export default function ChangeItemStatusPage() {
                 queryClient.invalidateQueries({
                     queryKey: ['batchRecords', batchNumber, PAGE_TYPE]
                 });
+                // Redirect to batch list page after successful post
+                router.push('/batch');
             } else {
                 showErrorNotification(
                     'Posting of batch failed',
