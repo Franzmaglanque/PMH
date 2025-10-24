@@ -15,9 +15,9 @@ import {
   rem,
 } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
-import { 
-  IconDashboard, 
-  IconPackage, 
+import {
+  IconDashboard,
+  IconPackage,
   IconSettings,
   IconLogout,
   IconChevronDown,
@@ -25,6 +25,13 @@ import {
   IconBell,
   IconFileText,
   IconChartBar,
+  IconToggleLeft,
+  IconCurrencyDollar,
+  IconFileDescription,
+  IconBox,
+  IconBarcode,
+  IconPhoto,
+  IconBuildingStore,
 } from '@tabler/icons-react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
@@ -279,11 +286,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             />
 
             <NavLink
-              component={Link}
-              href="/batch"
               label="Batch Management"
               leftSection={<IconPackage size={20} stroke={1.5} />}
-              active={isActive('/batch')}
+              childrenOffset={28}
+              defaultOpened={isActive('/batch')}
               styles={{
                 root: {
                   borderRadius: rem(8),
@@ -300,7 +306,127 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                   fontSize: rem(14),
                 },
               }}
-            />
+            >
+              <NavLink
+                component={Link}
+                href="/batch/change_item_status"
+                label="Change Item Status"
+                leftSection={<IconToggleLeft size={18} stroke={1.5} />}
+                active={isActive('/batch/change_item_status')}
+                styles={{
+                  root: {
+                    borderRadius: rem(6),
+                    fontSize: rem(13),
+                    '&[data-active]': {
+                      backgroundColor: '#e5dbff',
+                      color: '#5f3dc4',
+                    },
+                  },
+                }}
+              />
+              <NavLink
+                component={Link}
+                href="/batch/change_price_cost"
+                label="Change Price/Cost"
+                leftSection={<IconCurrencyDollar size={18} stroke={1.5} />}
+                active={isActive('/batch/change_price_cost')}
+                styles={{
+                  root: {
+                    borderRadius: rem(6),
+                    fontSize: rem(13),
+                    '&[data-active]': {
+                      backgroundColor: '#e5dbff',
+                      color: '#5f3dc4',
+                    },
+                  },
+                }}
+              />
+              <NavLink
+                component={Link}
+                href="/batch/change_description"
+                label="Change Description"
+                leftSection={<IconFileDescription size={18} stroke={1.5} />}
+                active={isActive('/batch/change_description')}
+                styles={{
+                  root: {
+                    borderRadius: rem(6),
+                    fontSize: rem(13),
+                    '&[data-active]': {
+                      backgroundColor: '#e5dbff',
+                      color: '#5f3dc4',
+                    },
+                  },
+                }}
+              />
+              <NavLink
+                component={Link}
+                href="/batch/change_packaging"
+                label="Change Packaging"
+                leftSection={<IconBox size={18} stroke={1.5} />}
+                active={isActive('/batch/change_packaging')}
+                styles={{
+                  root: {
+                    borderRadius: rem(6),
+                    fontSize: rem(13),
+                    '&[data-active]': {
+                      backgroundColor: '#e5dbff',
+                      color: '#5f3dc4',
+                    },
+                  },
+                }}
+              />
+              <NavLink
+                component={Link}
+                href="/batch/new_barcode"
+                label="New Barcode"
+                leftSection={<IconBarcode size={18} stroke={1.5} />}
+                active={isActive('/batch/new_barcode')}
+                styles={{
+                  root: {
+                    borderRadius: rem(6),
+                    fontSize: rem(13),
+                    '&[data-active]': {
+                      backgroundColor: '#e5dbff',
+                      color: '#5f3dc4',
+                    },
+                  },
+                }}
+              />
+              <NavLink
+                component={Link}
+                href="/batch/new_image"
+                label="New Image"
+                leftSection={<IconPhoto size={18} stroke={1.5} />}
+                active={isActive('/batch/new_image')}
+                styles={{
+                  root: {
+                    borderRadius: rem(6),
+                    fontSize: rem(13),
+                    '&[data-active]': {
+                      backgroundColor: '#e5dbff',
+                      color: '#5f3dc4',
+                    },
+                  },
+                }}
+              />
+              <NavLink
+                component={Link}
+                href="/batch/change_store_listing"
+                label="Change Store Listing"
+                leftSection={<IconBuildingStore size={18} stroke={1.5} />}
+                active={isActive('/batch/change_store_listing')}
+                styles={{
+                  root: {
+                    borderRadius: rem(6),
+                    fontSize: rem(13),
+                    '&[data-active]': {
+                      backgroundColor: '#e5dbff',
+                      color: '#5f3dc4',
+                    },
+                  },
+                }}
+              />
+            </NavLink>
 
             <NavLink
               component={Link}

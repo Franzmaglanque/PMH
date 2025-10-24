@@ -94,43 +94,43 @@ export default function UpdateItemChangePage() {
             </Group>
 
             <DataTable
-            withTableBorder
-            withColumnBorders
-            striped
-            highlightOnHover
-            records={data || []}
-            fetching={isLoading}
-            columns={[
-                { accessor: 'batch_number', title: 'Batch #', sortable: true },
-                { accessor: 'total_record', title: 'Total Records', sortable: true },
-                { accessor: 'date_created', title: 'Date Created', sortable: true },
-                { accessor: 'dateSubmitted', title: 'Date Submitted', sortable: true },
-                { accessor: 'batchStatus', title: 'Batch Status', sortable: true },
-                {
-                accessor: 'actions',
-                title: 'Actions',
-                render: () => (
-                    <Button size="xs" variant="light">
-                    View
-                    </Button>
-                ),
-                },
-            ]}
-            // Pagination
-            totalRecords={data?.length || 0}
-            recordsPerPage={10}
-            page={1}
-            onPageChange={(page) => console.log(page)}
-            // Empty state
-            noRecordsText="No data available in table"
-            // Styling
-            styles={{
-                header: {
-                backgroundColor: '#0d8080',
-                color: 'white',
-                },
-            }}
-        />
+                withTableBorder
+                withColumnBorders
+                striped
+                highlightOnHover
+                records={data || []}
+                fetching={isLoading}
+                columns={[
+                    { accessor: 'batch_number', title: 'Batch #', sortable: true },
+                    { accessor: 'total_record', title: 'Total Records', sortable: true },
+                    { accessor: 'date_created', title: 'Date Created', sortable: true },
+                    { accessor: 'dateSubmitted', title: 'Date Submitted', sortable: true },
+                    { accessor: 'batch_status', title: 'Batch Status', sortable: true },
+                    {
+                    accessor: 'actions',
+                    title: 'Actions',
+                    render: () => (
+                        <Button size="xs" variant="light">
+                        View
+                        </Button>
+                    ),
+                    },
+                ]}
+                // Pagination
+                totalRecords={data?.length || 0}
+                recordsPerPage={10}
+                page={1}
+                onPageChange={(page) => console.log(page)}
+                // Empty state
+                noRecordsText="No data available in table"
+                // Styling
+                styles={{
+                    header: {
+                    backgroundColor: '#0d8080',
+                    color: 'white',
+                    },
+                }}
+            />
         </>
     );
 }

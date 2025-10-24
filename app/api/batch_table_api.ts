@@ -4,7 +4,6 @@ export const fetchBatchRecords = async () => {
     try {
         const result = await apiClient('/batch/fetch', {
             method: "GET",
-            skipAuth: true, // This endpoint doesn't require authentication
         });
         return result.data;
     } catch (error) {
