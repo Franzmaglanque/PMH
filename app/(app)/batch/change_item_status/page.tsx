@@ -19,7 +19,7 @@ import {
 } from '@mantine/core';
 import { IconArrowLeft, IconDeviceFloppy, IconCheck } from '@tabler/icons-react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useQuery, useMutation,useQueryClient } from "@tanstack/react-query";
@@ -31,7 +31,7 @@ import { StyledDataTable, createBadgeRenderer,SimpleDataTable } from '@/lib/data
 import { changeItemStatusSchema, type ChangeItemStatusInput } from '@/lib/schemas/batch.schema';
 import { getChangeStatusColumns } from '@/components/Columns/Change_status';
 
-export default function ChangeItemStatusPage() {
+function ChangeItemStatusContent() {
     const PAGE_TYPE = 'change_status';
     const router = useRouter();
     const queryClient = useQueryClient();
@@ -1264,5 +1264,17 @@ export default function ChangeItemStatusPage() {
             </Stack>
         </Modal>
         </Box>
+    );
+}
+
+export default function ChangeItemStatusPage() {
+    return (
+        <Suspense fallback={
+            <Box style={{ backgroundColor: '#f8f9fa', minHeight: '100vh', padding: rem(20) }}>
+                <Text>Loading...</Text>
+            </Box>
+        }>
+            <ChangeItemStatusContent />
+        </Suspense>
     );
 }
