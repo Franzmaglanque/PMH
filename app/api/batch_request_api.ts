@@ -41,9 +41,9 @@ export const fetchBatchRecords = async (batchNumber: string, type: BatchType) =>
     }
 }
 
-export const validateBarcode = async (upc: string, batchNumber: string) => {
+export const barcodeFetchDetails = async (upc: string, batchNumber: string) => {
     try {
-        return await apiClient('/barcode/validate', {
+        return await apiClient('/barcode/fetch-details', {
             method: 'POST',
             body: JSON.stringify({
                 upc: upc,
@@ -56,6 +56,40 @@ export const validateBarcode = async (upc: string, batchNumber: string) => {
     }
 }
 
+export const validateBarcodeUsed = async (barcode: string, batchNumber: string, requestType: string) => {
+    try {
+        // Use direct fetch instead of apiClient to handle 409 status
+        const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+        const url = `${process.env.NEXT_PUBLIC_API_URL}/barcode/validate-used`;
+
+        const response = await fetch(url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+                ...(token && { 'Authorization': `Bearer ${token}` }),
+            },
+            body: JSON.stringify({
+                barcode: barcode,
+                batch_number: batchNumber,
+                request_type: requestType,
+            }),
+        });
+
+        const data = await response.json();
+
+        // Return the data regardless of status code (200 or 409)
+        // The mutation will handle the response based on data.status
+        return data;
+    } catch (error) {
+        console.log(error);
+        throw error;
+    }
+}
+
+/**
+ * This API will INSERT encoded details to batchItems table.
+ */
 export const saveBatchRecord = async (params: any) => {
     try {
         return await apiClient('/batch/record/save', {
@@ -68,6 +102,9 @@ export const saveBatchRecord = async (params: any) => {
     }
 }
 
+/**
+ * This API will UPDATE encoded details to batchItems table.
+ */
 export const updateBatchRecord = async (params: any) => {
     try {
         return await apiClient('/batch/record/update', {
@@ -80,6 +117,9 @@ export const updateBatchRecord = async (params: any) => {
     }
 }
 
+/**
+ * This API will DELETE encoded details to batchItems table.
+ */
 export const deleteBatchRecord = async (params: any) => {
     try {
         return await apiClient(`/batch/record/delete/${params.record_id}`, {

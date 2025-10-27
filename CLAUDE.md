@@ -84,8 +84,13 @@ All form validation uses Zod schemas located in `lib/schemas/auth.schema.tsx`:
 - Token retrieved from localStorage before each request
 - Batch management APIs:
   - `generateBatch(requestType)` - Creates new batch with supplier code
-  - `validateBarcode(upc, batchNumber)` - Validates product barcode
+  - `validateBarcode(upc, batchNumber)` - Fetches barcode/item details (SKU, description, current status, cost, price, department)
+  - `validateBarcodeUsed(barcode, batchNumber, requestType)` - Validates if barcode is already used in another open/submitted batch
   - `fetchBatchRecordsById(batchNumber)` - Fetches records for specific batch
+  - `saveBatchRecord(params)` - Saves a new batch record
+  - `updateBatchRecord(params)` - Updates an existing batch record
+  - `deleteBatchRecord(recordId, requestType)` - Deletes a batch record
+  - `postBatch(batchNumber, requestType)` - Submits a batch for approval
 - Credentials included in requests via `credentials: 'include'` for cookie handling
 
 ### UI Components

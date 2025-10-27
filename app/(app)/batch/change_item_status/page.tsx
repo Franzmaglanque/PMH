@@ -23,7 +23,7 @@ import { useState, useEffect, Suspense } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useQuery, useMutation,useQueryClient } from "@tanstack/react-query";
-import { validateBarcode, fetchBatchRecordsById,saveBatchRecord,fetchBatchRecords,deleteBatchRecord,updateBatchRecord,postBatch } from '@/app/api/batch_request_api';
+import { barcodeFetchDetails, fetchBatchRecordsById,saveBatchRecord,fetchBatchRecords,deleteBatchRecord,updateBatchRecord,postBatch,validateBarcodeUsed } from '@/app/api/batch_request_api';
 import { showSuccessNotification, showErrorNotification } from '@/lib/notifications';
 import { useDebouncedInput } from '@/lib/debounce';
 import { useNumericInput } from '@/lib/inputHelpers';
@@ -104,7 +104,7 @@ function ChangeItemStatusContent() {
 
     const validateBarcodeMutation = useMutation({
         mutationFn: ({ barcode, batchNumber }: { barcode: string; batchNumber: string }) =>
-            validateBarcode(barcode, batchNumber),
+            barcodeFetchDetails(barcode, batchNumber),
         onSuccess: (data) => {
             console.log('API Response:', data);
 
@@ -140,6 +140,46 @@ function ChangeItemStatusContent() {
         },
     });
 
+    const validateBarcodeUsedMutation = useMutation({
+        mutationFn: ({ barcode, batchNumber, requestType }: { barcode: string; batchNumber: string; requestType: string }) =>
+            validateBarcodeUsed(barcode, batchNumber, requestType),
+        onSuccess: (data) => {
+            console.log('Validate Barcode Used Response:', data);
+
+            if (data.status) {
+                // status true means conflict exists - show error
+                showErrorNotification(
+                    data.title || 'Barcode Already Used',
+                    data.message || 'This barcode is already used in another batch'
+                );
+                setConfirmModalOpened(false);
+                setPendingFormData(null);
+            } else {
+                // status false means no conflict - proceed with save
+                if (pendingFormData) {
+                    const formattedDate = pendingFormData.effectivity_date instanceof Date
+                        ? pendingFormData.effectivity_date.toISOString().split('T')[0]
+                        : pendingFormData.effectivity_date;
+
+                    saveBatchRecordMutation.mutate({
+                        ...pendingFormData,
+                        effectivity_date: formattedDate,
+                        batch_number: batchNumber,
+                        request_type: 'change_status'
+                    });
+                }
+            }
+        },
+        onError: (error) => {
+            showErrorNotification(
+                'Validation Failed',
+                error instanceof Error ? error.message : 'Failed to validate barcode usage'
+            );
+            setConfirmModalOpened(false);
+            setPendingFormData(null);
+        },
+    });
+
     const saveBatchRecordMutation = useMutation({
         mutationFn: saveBatchRecord,
         onSuccess: (data) => {
@@ -147,27 +187,31 @@ function ChangeItemStatusContent() {
 
             if (data.status) {
                 showSuccessNotification(
-                    'Barcode Validated',
-                    data.message || 'Item details have been loaded successfully'
+                    'Record Saved',
+                    data.message || 'Item details have been saved successfully'
                 );
                 queryClient.invalidateQueries({
                     queryKey: ['batchRecords', batchNumber, PAGE_TYPE]
                 });
                 reset();
+                setConfirmModalOpened(false);
+                setPendingFormData(null);
             } else {
-                reset();
                 showErrorNotification(
                     'Save record failed',
                     data.message || 'Please Contact buyer for assistance'
                 );
+                setConfirmModalOpened(false);
+                setPendingFormData(null);
             }
         },
         onError: (error) => {
-            reset();
             showErrorNotification(
                 'Saving Failed',
                 error instanceof Error ? error.message : 'Failed to save record'
             );
+            setConfirmModalOpened(false);
+            setPendingFormData(null);
         },
     });
 
@@ -323,27 +367,14 @@ function ChangeItemStatusContent() {
     };
 
     const handleConfirmSave = () => {
-        if (!pendingFormData) return;
+        if (!pendingFormData || !batchNumber) return;
 
-        const formattedDate = pendingFormData.effectivity_date instanceof Date
-        ? pendingFormData.effectivity_date.toISOString().split('T')[0]
-        : pendingFormData.effectivity_date;
-        console.log({
-            ...pendingFormData,
-            effectivity_date: formattedDate,
-            batch_number: batchNumber,
-            request_type: 'change_status'
-        })
-        saveBatchRecordMutation.mutate({
-            ...pendingFormData,
-            effectivity_date: formattedDate,
-            batch_number: batchNumber,
-            request_type: 'change_status'
+        // First, validate if barcode is already used
+        validateBarcodeUsedMutation.mutate({
+            barcode: pendingFormData.barcode,
+            batchNumber: batchNumber,
+            requestType: PAGE_TYPE
         });
-
-        // Close modal and clear pending data
-        setConfirmModalOpened(false);
-        setPendingFormData(null);
     };
 
     const handleCancelSave = () => {
@@ -352,6 +383,10 @@ function ChangeItemStatusContent() {
     };
 
     const handleGoBack = () => {
+        // Invalidate the batch records query to refresh the batch list
+        queryClient.invalidateQueries({
+            queryKey: ['BatchRecords']
+        });
         router.push('/batch');
     };
 
@@ -866,6 +901,7 @@ function ChangeItemStatusContent() {
                         variant="light"
                         color="gray"
                         onClick={handleCancelSave}
+                        disabled={validateBarcodeUsedMutation.isPending || saveBatchRecordMutation.isPending}
                     >
                         Cancel
                     </Button>
@@ -873,7 +909,7 @@ function ChangeItemStatusContent() {
                         color="blue"
                         leftSection={<IconDeviceFloppy size={18} />}
                         onClick={handleConfirmSave}
-                        loading={saveBatchRecordMutation.isPending}
+                        loading={validateBarcodeUsedMutation.isPending || saveBatchRecordMutation.isPending}
                     >
                         Confirm & Save
                     </Button>

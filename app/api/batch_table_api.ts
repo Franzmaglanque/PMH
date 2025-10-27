@@ -1,13 +1,14 @@
 import { apiClient, getUser } from "@/lib/apiClient";
 
-export const fetchBatchRecords = async () => {
+export const fetchBatchRecords = async (requestType: string) => { // Remove optional
     try {
-        const result = await apiClient('/batch/fetch', {
+        const result = await apiClient(`/batch/fetch?request_type=${requestType}`, {
             method: "GET",
         });
         return result.data;
     } catch (error) {
         console.log(error);
+        throw error; // Re-throw to let React Query handle it
     }
 }
 

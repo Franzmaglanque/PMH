@@ -309,10 +309,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             >
               <NavLink
                 component={Link}
-                href="/batch/change_item_status"
+                href="/batch?request_type=change_status"
                 label="Change Item Status"
                 leftSection={<IconToggleLeft size={18} stroke={1.5} />}
-                active={isActive('/batch/change_item_status')}
+                active={pathname === '/batch' && new URLSearchParams(window.location.search).get('request_type') === 'change_status'}
                 styles={{
                   root: {
                     borderRadius: rem(6),
@@ -326,10 +326,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               />
               <NavLink
                 component={Link}
-                href="/batch/change_price_cost"
+                href="/batch?request_type=change_price_cost"
                 label="Change Price/Cost"
                 leftSection={<IconCurrencyDollar size={18} stroke={1.5} />}
-                active={isActive('/batch/change_price_cost')}
+                active={pathname === '/batch' && new URLSearchParams(window.location.search).get('request_type') === 'change_price_cost'}
                 styles={{
                   root: {
                     borderRadius: rem(6),
@@ -343,10 +343,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               />
               <NavLink
                 component={Link}
-                href="/batch/change_description"
+                href="/batch?request_type=change_description"
                 label="Change Description"
                 leftSection={<IconFileDescription size={18} stroke={1.5} />}
-                active={isActive('/batch/change_description')}
+                active={pathname === '/batch' && new URLSearchParams(window.location.search).get('request_type') === 'change_description'}
                 styles={{
                   root: {
                     borderRadius: rem(6),
@@ -360,10 +360,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               />
               <NavLink
                 component={Link}
-                href="/batch/change_packaging"
+                href="/batch?request_type=change_packaging"
                 label="Change Packaging"
                 leftSection={<IconBox size={18} stroke={1.5} />}
-                active={isActive('/batch/change_packaging')}
+                active={pathname === '/batch' && new URLSearchParams(window.location.search).get('request_type') === 'change_packaging'}
                 styles={{
                   root: {
                     borderRadius: rem(6),
@@ -377,10 +377,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               />
               <NavLink
                 component={Link}
-                href="/batch/new_barcode"
+                href="/batch?request_type=new_barcode"
                 label="New Barcode"
                 leftSection={<IconBarcode size={18} stroke={1.5} />}
-                active={isActive('/batch/new_barcode')}
+                active={pathname === '/batch' && new URLSearchParams(window.location.search).get('request_type') === 'new_barcode'}
                 styles={{
                   root: {
                     borderRadius: rem(6),
@@ -394,10 +394,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               />
               <NavLink
                 component={Link}
-                href="/batch/new_image"
+                href="/batch?request_type=new_image"
                 label="New Image"
                 leftSection={<IconPhoto size={18} stroke={1.5} />}
-                active={isActive('/batch/new_image')}
+                active={pathname === '/batch' && new URLSearchParams(window.location.search).get('request_type') === 'new_image'}
                 styles={{
                   root: {
                     borderRadius: rem(6),
@@ -411,10 +411,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               />
               <NavLink
                 component={Link}
-                href="/batch/change_store_listing"
+                href="/batch?request_type=change_store_listing"
                 label="Change Store Listing"
                 leftSection={<IconBuildingStore size={18} stroke={1.5} />}
-                active={isActive('/batch/change_store_listing')}
+                active={pathname === '/batch' && new URLSearchParams(window.location.search).get('request_type') === 'change_store_listing'}
                 styles={{
                   root: {
                     borderRadius: rem(6),
