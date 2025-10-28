@@ -81,7 +81,7 @@ export default function LoginPage() {
         );
 
         // Redirect to dashboard or intended page
-        router.push('/batch');
+        router.push('/dashboard');
       } else {
         showErrorNotification(
           'Login Failed',

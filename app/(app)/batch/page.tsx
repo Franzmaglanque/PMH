@@ -70,7 +70,7 @@ export default function UpdateItemChangePage() {
             // Store batch number in sessionStorage to pass as state
             sessionStorage.setItem('current_batch_number', data.batch_number);
             // Navigate to change_item_status page
-            router.push(`/batch/change_item_status?batch_number=${data.batch_number}`);
+            router.push(`/batch/${urlRequestType}?batch_number=${data.batch_number}`);
         },
         onError: (error) => {
             showErrorNotification(

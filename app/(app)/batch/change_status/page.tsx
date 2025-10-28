@@ -943,10 +943,7 @@ function ChangeItemStatusContent() {
                 },
             }}
         >
-            {/* <form onSubmit={handleEditSubmit(onEditSubmit, (errors) => {
-                console.log('Edit form validation errors:', errors);
-            })}> */}
-                <form onSubmit={handleEditSubmit(onEditSubmit)}>
+            <form onSubmit={handleEditSubmit(onEditSubmit)}>
                 <Stack gap="lg">
                     {/* ITEM DETAILS Section */}
                     <Box>
@@ -1017,27 +1014,6 @@ function ChangeItemStatusContent() {
                                     }}
                                 />
                             </Grid.Col>
-
-                            {/* <Grid.Col span={4}>
-                                <Text size="sm" fw={600} mb={rem(8)} c="#495057" tt="uppercase">
-                                    Current SKU Status :
-                                </Text>
-                                <TextInput
-                                    value={editingRecord?.current_sku_status || ''}
-                                    readOnly
-                                    size="md"
-                                    styles={{
-                                        input: {
-                                            border: '1px solid #dee2e6',
-                                            borderRadius: rem(4),
-                                            fontSize: rem(14),
-                                            backgroundColor: '#f8f9fa',
-                                            color: '#495057',
-                                            textTransform: 'uppercase',
-                                        },
-                                    }}
-                                />
-                            </Grid.Col> */}
                         </Grid>
                     </Box>
 
