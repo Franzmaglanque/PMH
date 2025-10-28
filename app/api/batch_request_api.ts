@@ -191,3 +191,17 @@ export const deleteBatchRecord = async (params: any) => {
         throw error;
     }
 }
+
+/**
+ * This API will DELETE encoded details to batchItems table.
+ */
+export const fetchUOM = async () => {
+    try {
+        return await apiClient(`/uom/fetch`, {
+            method: 'GET',
+        });
+    } catch (error) {
+        console.log(error);
+        throw error;
+    }
+}

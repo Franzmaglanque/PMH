@@ -44,7 +44,7 @@ function ChangeItemStatusContent() {
     const [editingRecord, setEditingRecord] = useState<any>(null);
     const [postBatchModalOpened, setPostBatchModalOpened] = useState(false);
 
-    const { data: batchRecords, isLoading:isLoadingRecords, error } = useQuery({
+    const { data: batchRecords, isLoading: isLoadingRecords, isFetching: isFetchingRecords, error } = useQuery({
         queryKey: ['batchRecords', batchNumber, PAGE_TYPE],
         queryFn: () => fetchBatchRecords(batchNumber!, PAGE_TYPE),
         enabled: !!batchNumber,
@@ -817,7 +817,7 @@ function ChangeItemStatusContent() {
                 title="ENCODED RECORDS"
                 showRecordCount
                 data={batchRecords || []}
-                isLoading={isLoadingRecords}
+                isLoading={isLoadingRecords || isFetchingRecords}
                 emptyMessage="No encoded records yet."
                 columns={getChangeStatusColumns({
                     onDelete: handleDeleteRecord,
