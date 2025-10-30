@@ -29,15 +29,16 @@ import { useDebouncedInput } from '@/lib/debounce';
 import { StyledDataTable } from '@/lib/dataTableHelper';
 import { z } from 'zod';
 import { getNewBarcodeColumns } from '@/components/Columns/New_barcode';
+import { useNumericInputWithMaxLength, useNumericInputWithMaxLengthDebounced } from '@/lib/inputHelpers';
 
 // Zod schema for new barcode form
 const newBarcodeSchema = z.object({
   barcode: z.string().min(1, 'UPC is required'),
   sku: z.string().min(1, 'SKU is required'),
   description: z.string().optional(),
-  new_barcode: z.string().min(1, 'New Barcode is required'),
-  check_digit: z.string().optional(),
-  is_primary: z.string().min(1, 'Primary Barcode selection is required'),
+  raw_barcode: z.string().min(1, 'Raw Barcode is required'),
+  new_barcode: z.string().optional(),
+  is_primary_barcode: z.string().min(1, 'Primary Barcode selection is required'),
   dept: z.string().optional(),
   deptnm: z.string().optional(),
 });
@@ -77,9 +78,9 @@ function NewBarcodeContent() {
             barcode: '',
             sku: '',
             description: '',
+            raw_barcode: '',
             new_barcode: '',
-            check_digit: '',
-            is_primary: '',
+            is_primary_barcode: '',
             dept: '',
             deptnm: '',
         },
@@ -98,9 +99,9 @@ function NewBarcodeContent() {
             barcode: '',
             sku: '',
             description: '',
+            raw_barcode: '',
             new_barcode: '',
-            check_digit: '',
-            is_primary: '',
+            is_primary_barcode: '',
             dept: '',
             deptnm: '',
         },
@@ -158,9 +159,10 @@ function NewBarcodeContent() {
                         barcode: pendingFormData.barcode,
                         sku: pendingFormData.sku,
                         long_name: pendingFormData.description || '',
-                        new_barcode: pendingFormData.new_barcode,
-                        check_digit: pendingFormData.check_digit || '',
-                        is_primary: pendingFormData.is_primary,
+                        new_barcode: pendingFormData.new_barcode || '',
+                        dept: pendingFormData.dept || '',
+                        deptnm: pendingFormData.deptnm || '',
+                        is_primary_barcode: pendingFormData.is_primary_barcode,
                         batch_number: batchNumber || '',
                         request_type: PAGE_TYPE,
                     });
@@ -194,9 +196,9 @@ function NewBarcodeContent() {
                     barcode: '',
                     sku: '',
                     description: '',
+                    raw_barcode: '',
                     new_barcode: '',
-                    check_digit: '',
-                    is_primary: '',
+                    is_primary_barcode: '',
                     dept: '',
                     deptnm: '',
                 });
@@ -318,12 +320,12 @@ function NewBarcodeContent() {
 
     const handleEditRecord = (record: any) => {
         setEditingRecord(record);
-        setEditValue('barcode', record.original_barcode ? String(record.original_barcode) : '');
+        setEditValue('barcode', record.barcode ? String(record.barcode) : '');
         setEditValue('sku', record.sku ? String(record.sku) : '');
         setEditValue('description', record.long_name || '');
+        setEditValue('raw_barcode', record.check_digit || '');
         setEditValue('new_barcode', record.new_barcode ? String(record.new_barcode) : '');
-        setEditValue('check_digit', record.check_digit || '');
-        setEditValue('is_primary', record.is_primary === 1 || record.is_primary === '1' || record.is_primary === 'yes' ? 'yes' : 'no');
+        setEditValue('is_primary_barcode', record.is_primary_barcode === 1 || record.is_primary_barcode === '1' || record.is_primary_barcode === 'yes' ? 'yes' : 'no');
         setEditValue('dept', record.dept || '');
         setEditValue('deptnm', record.deptnm || '');
         setEditModalOpened(true);
@@ -336,9 +338,9 @@ function NewBarcodeContent() {
             barcode: data.barcode,
             sku: data.sku,
             long_name: data.description || '',
-            new_barcode: data.new_barcode,
-            check_digit: data.check_digit || '',
-            is_primary: data.is_primary,
+            new_barcode: data.new_barcode || '',
+            check_digit: data.raw_barcode || '',
+            is_primary_barcode: data.is_primary_barcode,
             batch_number: batchNumber || '',
             request_type: PAGE_TYPE,
             record_id: editingRecord?.id,
@@ -414,6 +416,90 @@ function NewBarcodeContent() {
             });
         }
     }, 800);
+
+    // Barcode input helper with 13 digit limit (must be at component level, not inside render)
+    const barcodeNumericInput = useNumericInputWithMaxLength(13, (value) => {
+        setValue('barcode', value);
+        validateUpc({ target: { value } } as React.ChangeEvent<HTMLInputElement>);
+    });
+
+    // Raw barcode input helper with 12 digit limit and debouncing
+    const rawBarcodeNumericInput = useNumericInputWithMaxLengthDebounced(
+        12,
+        (value) => setValue('raw_barcode', value), // Immediate update for responsive UI
+        (value) => {
+            console.log('raw_barcode debounced value:', value);
+            let paddedValue = '';
+            // Pad with leading zeros if length is less than 12 and value is not empty
+            if (value.length > 0 && value.length < 12) {
+                paddedValue = value.padStart(12, '0');
+                setValue('raw_barcode', value);
+                // value = paddedValue; // Use padded value for check digit calculation
+            }
+
+            // 1. Sum digits at odd positions (1st, 3rd, 5th, 7th, 9th, 11th)
+            let oddSum = parseInt(paddedValue[0]) + parseInt(paddedValue[2]) + parseInt(paddedValue[4]) +
+                        parseInt(paddedValue[6]) + parseInt(paddedValue[8]) + parseInt(paddedValue[10]);
+
+            // 2. Sum digits at even positions (2nd, 4th, 6th, 8th, 10th, 12th) and multiply by 3
+            let evenSum = (parseInt(paddedValue[1]) + parseInt(paddedValue[3]) + parseInt(paddedValue[5]) +
+                        parseInt(paddedValue[7]) + parseInt(paddedValue[9]) + parseInt(paddedValue[11])) * 3;
+
+            let totalSum = oddSum + evenSum;
+
+            // 3. The check digit is what you need to add to make the total a multiple of 10
+            let lastDigit = totalSum % 10;
+            let checkDigit = (10 - lastDigit) % 10; // The modulo 10 handles the case where result is 10
+            let ean13Barcode = value + checkDigit;
+
+            console.log('Check digit:', checkDigit);
+            console.log('Complete EAN-13:', ean13Barcode);
+
+            // Set the new_barcode (complete EAN-13) in your form
+            setValue('new_barcode', ean13Barcode);
+
+        },
+        800
+    );
+
+    // Edit modal raw barcode input helper with 12 digit limit
+    const editRawBarcodeNumericInput = useNumericInputWithMaxLengthDebounced(
+        12,
+        (value) => setEditValue('raw_barcode', value), // Immediate update for responsive UI
+        (value) => {
+            console.log('raw_barcode debounced value:', value);
+            let paddedValue = '';
+            // Pad with leading zeros if length is less than 12 and value is not empty
+            if (value.length > 0 && value.length < 12) {
+                paddedValue = value.padStart(12, '0');
+                setEditValue('raw_barcode', value);
+                // value = paddedValue; // Use padded value for check digit calculation
+            }
+
+            // 1. Sum digits at odd positions (1st, 3rd, 5th, 7th, 9th, 11th)
+            let oddSum = parseInt(paddedValue[0]) + parseInt(paddedValue[2]) + parseInt(paddedValue[4]) +
+                        parseInt(paddedValue[6]) + parseInt(paddedValue[8]) + parseInt(paddedValue[10]);
+
+            // 2. Sum digits at even positions (2nd, 4th, 6th, 8th, 10th, 12th) and multiply by 3
+            let evenSum = (parseInt(paddedValue[1]) + parseInt(paddedValue[3]) + parseInt(paddedValue[5]) +
+                        parseInt(paddedValue[7]) + parseInt(paddedValue[9]) + parseInt(paddedValue[11])) * 3;
+
+            let totalSum = oddSum + evenSum;
+
+            // 3. The check digit is what you need to add to make the total a multiple of 10
+            let lastDigit = totalSum % 10;
+            let checkDigit = (10 - lastDigit) % 10; // The modulo 10 handles the case where result is 10
+            let ean13Barcode = value + checkDigit;
+
+            console.log('Check digit:', checkDigit);
+            console.log('Complete EAN-13:', ean13Barcode);
+
+            // Set the new_barcode (complete EAN-13) in your form
+            setEditValue('new_barcode', ean13Barcode);
+
+        },
+        800
+    );
 
     return (
         <Box style={{ backgroundColor: '#f8f9fa', minHeight: '100vh', padding: rem(20) }}>
@@ -509,13 +595,8 @@ function NewBarcodeContent() {
                                                 placeholder=""
                                                 size="md"
                                                 value={field.value}
-                                                onChange={(e) => {
-                                                    const value = e.target.value;
-                                                    if (/^\d*$/.test(value)) {
-                                                        field.onChange(value);
-                                                        validateUpc({ target: { value } } as React.ChangeEvent<HTMLInputElement>);
-                                                    }
-                                                }}
+                                                onChange={barcodeNumericInput.onChange}
+                                                onKeyPress={barcodeNumericInput.onKeyPress}
                                                 error={errors.barcode?.message}
                                                 styles={{
                                                     input: {
@@ -600,23 +681,19 @@ function NewBarcodeContent() {
                             <Grid.Col span={12}>
                                 <Box>
                                     <Text size="sm" fw={600} mb={rem(8)} c="#495057">
-                                        NEW BARCODE <span style={{ color: 'red' }}>*</span>
+                                        RAW BARCODE <span style={{ color: 'red' }}>*</span>
                                     </Text>
                                     <Controller
-                                        name="new_barcode"
+                                        name="raw_barcode"
                                         control={control}
                                         render={({ field }) => (
                                             <TextInput
-                                                {...field}
-                                                placeholder="Enter new barcode"
+                                                placeholder="Enter raw barcode (12 digits)"
                                                 size="md"
-                                                error={errors.new_barcode?.message}
-                                                onChange={(e) => {
-                                                    const value = e.target.value;
-                                                    if (/^\d*$/.test(value)) {
-                                                        field.onChange(value);
-                                                    }
-                                                }}
+                                                value={field.value}
+                                                onChange={rawBarcodeNumericInput.onChange}
+                                                onKeyPress={rawBarcodeNumericInput.onKeyPress}
+                                                error={errors.raw_barcode?.message}
                                                 styles={{
                                                     input: {
                                                         border: '1px solid #dee2e6',
@@ -633,26 +710,22 @@ function NewBarcodeContent() {
                             <Grid.Col span={12}>
                                 <Box>
                                     <Text size="sm" fw={600} mb={rem(8)} c="#495057">
-                                        CHECK DIGIT BARCODE
+                                        NEW BARCODE (EAN-13)
                                     </Text>
-                                    <Controller
-                                        name="check_digit"
-                                        control={control}
-                                        render={({ field }) => (
-                                            <TextInput
-                                                {...field}
-                                                placeholder="Enter check digit"
-                                                size="md"
-                                                error={errors.check_digit?.message}
-                                                styles={{
-                                                    input: {
-                                                        border: '1px solid #dee2e6',
-                                                        borderRadius: rem(4),
-                                                        fontSize: rem(14),
-                                                    },
-                                                }}
-                                            />
-                                        )}
+                                    <TextInput
+                                        placeholder="Auto-generated with check digit"
+                                        size="md"
+                                        readOnly
+                                        value={watch('new_barcode') || ''}
+                                        styles={{
+                                            input: {
+                                                border: '1px solid #dee2e6',
+                                                borderRadius: rem(4),
+                                                fontSize: rem(14),
+                                                backgroundColor: '#f8f9fa',
+                                                color: '#6c757d',
+                                            },
+                                        }}
                                     />
                                 </Box>
                             </Grid.Col>
@@ -663,7 +736,7 @@ function NewBarcodeContent() {
                                         PRIMARY BARCODE <span style={{ color: 'red' }}>*</span>
                                     </Text>
                                     <Controller
-                                        name="is_primary"
+                                        name="is_primary_barcode"
                                         control={control}
                                         render={({ field }) => (
                                             <Select
@@ -675,7 +748,7 @@ function NewBarcodeContent() {
                                                     { value: 'no', label: 'No' }
                                                 ]}
                                                 clearable
-                                                error={errors.is_primary?.message}
+                                                error={errors.is_primary_barcode?.message}
                                                 styles={{
                                                     input: {
                                                         border: '1px solid #dee2e6',
@@ -782,17 +855,17 @@ function NewBarcodeContent() {
                                     <Text size="sm">{pendingFormData.description || 'N/A'}</Text>
                                 </Group>
                                 <Group justify="space-between">
-                                    <Text size="sm" fw={600}>New Barcode:</Text>
+                                    <Text size="sm" fw={600}>Raw Barcode:</Text>
+                                    <Text size="sm">{pendingFormData.raw_barcode || 'N/A'}</Text>
+                                </Group>
+                                <Group justify="space-between">
+                                    <Text size="sm" fw={600}>New Barcode (EAN-13):</Text>
                                     <Text size="sm">{pendingFormData.new_barcode || 'N/A'}</Text>
                                 </Group>
                                 <Group justify="space-between">
-                                    <Text size="sm" fw={600}>Check Digit:</Text>
-                                    <Text size="sm">{pendingFormData.check_digit || 'N/A'}</Text>
-                                </Group>
-                                <Group justify="space-between">
                                     <Text size="sm" fw={600}>Primary Barcode:</Text>
-                                    <Badge color={pendingFormData.is_primary === 'yes' ? 'green' : 'gray'} size="sm">
-                                        {pendingFormData.is_primary === 'yes' ? 'YES' : 'NO'}
+                                    <Badge color={pendingFormData.is_primary_barcode === 'yes' ? 'green' : 'gray'} size="sm">
+                                        {pendingFormData.is_primary_barcode === 'yes' ? 'YES' : 'NO'}
                                     </Badge>
                                 </Group>
                             </Stack>
@@ -1026,7 +1099,27 @@ function NewBarcodeContent() {
                             <Stack gap="md">
                                 <Box>
                                     <Text size="xs" fw={600} mb={rem(6)} c="#495057">
-                                        New Barcode <span style={{ color: '#fa5252' }}>*</span>
+                                        Raw Barcode <span style={{ color: '#fa5252' }}>*</span>
+                                    </Text>
+                                    <Controller
+                                        name="raw_barcode"
+                                        control={editControl}
+                                        render={({ field }) => (
+                                            <TextInput
+                                                size="sm"
+                                                placeholder="Enter raw barcode (12 digits)"
+                                                value={field.value}
+                                                onChange={editRawBarcodeNumericInput.onChange}
+                                                onKeyPress={editRawBarcodeNumericInput.onKeyPress}
+                                                error={editErrors.raw_barcode?.message}
+                                            />
+                                        )}
+                                    />
+                                </Box>
+
+                                <Box>
+                                    <Text size="xs" fw={600} mb={rem(6)} c="#495057">
+                                        New Barcode (EAN-13)
                                     </Text>
                                     <Controller
                                         name="new_barcode"
@@ -1035,32 +1128,15 @@ function NewBarcodeContent() {
                                             <TextInput
                                                 {...field}
                                                 size="sm"
-                                                placeholder="Enter new barcode"
+                                                placeholder="EAN-13 barcode"
+                                                readOnly
                                                 error={editErrors.new_barcode?.message}
-                                                onChange={(e) => {
-                                                    const value = e.target.value;
-                                                    if (/^\d*$/.test(value)) {
-                                                        field.onChange(value);
-                                                    }
+                                                styles={{
+                                                    input: {
+                                                        backgroundColor: '#f8f9fa',
+                                                        color: '#6c757d',
+                                                    },
                                                 }}
-                                            />
-                                        )}
-                                    />
-                                </Box>
-
-                                <Box>
-                                    <Text size="xs" fw={600} mb={rem(6)} c="#495057">
-                                        Check Digit Barcode
-                                    </Text>
-                                    <Controller
-                                        name="check_digit"
-                                        control={editControl}
-                                        render={({ field }) => (
-                                            <TextInput
-                                                {...field}
-                                                size="sm"
-                                                placeholder="Enter check digit"
-                                                error={editErrors.check_digit?.message}
                                             />
                                         )}
                                     />
@@ -1071,7 +1147,7 @@ function NewBarcodeContent() {
                                         Primary Barcode <span style={{ color: '#fa5252' }}>*</span>
                                     </Text>
                                     <Controller
-                                        name="is_primary"
+                                        name="is_primary_barcode"
                                         control={editControl}
                                         render={({ field }) => (
                                             <Select
@@ -1083,7 +1159,7 @@ function NewBarcodeContent() {
                                                     { value: 'no', label: 'No' }
                                                 ]}
                                                 clearable
-                                                error={editErrors.is_primary?.message}
+                                                error={editErrors.is_primary_barcode?.message}
                                             />
                                         )}
                                     />

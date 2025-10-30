@@ -1,4 +1,5 @@
-import { useCallback } from 'react';
+import { useCallback, useMemo } from 'react';
+import { debounce as lodashDebounce } from 'lodash';
 
 /**
  * Filters out non-numeric characters from a string
@@ -104,6 +105,87 @@ export function useNumericInputWithMaxLength(
       }
     },
     [maxLength, onChange]
+  );
+
+  const handleKeyPress = useCallback(
+    (e: React.KeyboardEvent<HTMLInputElement>) => {
+      const target = e.target as HTMLInputElement;
+      const currentLength = filterNumericOnly(target.value).length;
+
+      // Prevent non-digit characters
+      if (!/[0-9]/.test(e.key)) {
+        e.preventDefault();
+        return;
+      }
+
+      // Prevent typing if max length reached
+      if (currentLength >= maxLength) {
+        e.preventDefault();
+      }
+    },
+    [maxLength]
+  );
+
+  return {
+    onChange: handleChange,
+    onKeyPress: handleKeyPress,
+  };
+}
+
+/**
+ * React hook that creates handlers for numeric-only input with max length AND debouncing.
+ * Updates the input immediately for responsive UI, but debounces additional callbacks.
+ *
+ * @param maxLength - Maximum number of digits allowed
+ * @param onImmediateChange - Callback that fires immediately (e.g., setValue for form state)
+ * @param onDebouncedChange - Optional callback that fires after debounce delay (e.g., API calls)
+ * @param delay - The number of milliseconds to delay (default: 800ms)
+ * @returns Object with onChange and onKeyPress handlers
+ *
+ * @example
+ * // UPC with immediate form update and debounced validation
+ * const barcodeHandlers = useNumericInputWithMaxLengthDebounced(
+ *   13,
+ *   (value) => setValue('barcode', value), // Immediate
+ *   (value) => validateBarcode(value),     // Debounced
+ *   800
+ * );
+ * <TextInput {...barcodeHandlers} />
+ */
+export function useNumericInputWithMaxLengthDebounced(
+  maxLength: number,
+  onImmediateChange?: (value: string) => void,
+  onDebouncedChange?: (value: string) => void,
+  delay: number = 800
+) {
+  // Create debounced callback
+  const debouncedCallback = useMemo(
+    () => onDebouncedChange ? lodashDebounce(onDebouncedChange, delay) : null,
+    [onDebouncedChange, delay]
+  );
+
+  const handleChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      // Only allow digits and enforce max length
+      let numericValue = filterNumericOnly(e.target.value);
+
+      if (numericValue.length > maxLength) {
+        numericValue = numericValue.slice(0, maxLength);
+      }
+
+      e.target.value = numericValue;
+
+      // Call the immediate callback first (for responsive UI)
+      if (onImmediateChange) {
+        onImmediateChange(numericValue);
+      }
+
+      // Call the debounced callback if it exists
+      if (debouncedCallback) {
+        debouncedCallback(numericValue);
+      }
+    },
+    [maxLength, onImmediateChange, debouncedCallback]
   );
 
   const handleKeyPress = useCallback(

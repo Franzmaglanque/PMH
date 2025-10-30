@@ -8,7 +8,7 @@ interface NewBarcodeColumnsProps {
 
 export const getNewBarcodeColumns = ({ onDelete, onEdit }: NewBarcodeColumnsProps) => [
     {
-        accessor: 'original_barcode',
+        accessor: 'barcode',
         title: 'Original UPC',
         width: 150,
         ellipsis: true,
@@ -28,12 +28,6 @@ export const getNewBarcodeColumns = ({ onDelete, onEdit }: NewBarcodeColumnsProp
         title: 'New Barcode',
         width: 150,
         ellipsis: true,
-    },
-    {
-        accessor: 'check_digit',
-        title: 'Check Digit',
-        width: 100,
-        textAlign: 'center' as const,
     },
     {
         accessor: 'is_primary',
