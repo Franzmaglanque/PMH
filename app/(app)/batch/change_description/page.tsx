@@ -193,6 +193,8 @@ function ChangeDescriptionContent() {
                     const formData = new FormData();
                     formData.append('barcode', pendingFormData.barcode);
                     formData.append('sku', pendingFormData.sku);
+                    formData.append('dept', pendingFormData.dept || '');
+                    formData.append('deptnm', pendingFormData.deptnm || '');
                     formData.append('long_name', pendingFormData.display_name || '');
                     formData.append('brand', pendingFormData.brand);
                     formData.append('description', pendingFormData.description);
@@ -371,6 +373,8 @@ function ChangeDescriptionContent() {
         const formData = new FormData();
         formData.append('barcode', data.barcode);
         formData.append('sku', data.sku);
+        formData.append('dept', data.dept || '');
+        formData.append('deptnm', data.deptnm || '');
         formData.append('long_name', data.display_name || '');
         formData.append('brand', data.brand);
         formData.append('description', data.description);

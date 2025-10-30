@@ -1,4 +1,6 @@
-import { Button, Group } from '@mantine/core';
+// import { Button, Group } from '@mantine/core';
+import { Button, Group, Image, Text } from '@mantine/core';
+
 import { modals } from '@mantine/modals';
 import { createBadgeRenderer } from '@/lib/dataTableHelper';
 
@@ -44,6 +46,41 @@ export const getChangeDescriptionColumns = ({ onDelete, onEdit }: ChangeStatusCo
         title: 'Size',
         ellipsis: true,
     },
+     {
+            accessor: 'image',
+            title: 'Image',
+            width: 100,
+            textAlign: 'center' as const,
+            render: (record: any) => {
+                if (record.image_url) {
+                    return (
+                        <Image
+                            src={record.image_url}
+                            alt={record.sku}
+                            width={50}
+                            height={50}
+                            fit="contain"
+                            style={{ cursor: 'pointer' }}
+                            onClick={() => {
+                                modals.open({
+                                    title: `Image - SKU: ${record.sku}`,
+                                    centered: true,
+                                    size: 'lg',
+                                    children: (
+                                        <Image
+                                            src={record.image_url}
+                                            alt={record.sku}
+                                            fit="contain"
+                                        />
+                                    ),
+                                });
+                            }}
+                        />
+                    );
+                }
+                return <Text size="xs" c="dimmed">No image</Text>;
+            },
+        },
     {
         accessor: 'actions',
         title: 'Actions',
