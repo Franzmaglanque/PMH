@@ -193,13 +193,57 @@ export const deleteBatchRecord = async (params: any) => {
 }
 
 /**
- * This API will DELETE encoded details to batchItems table.
+ * This API will fetch UOM list.
  */
 export const fetchUOM = async () => {
     try {
         return await apiClient(`/uom/fetch`, {
             method: 'GET',
         });
+    } catch (error) {
+        console.log(error);
+        throw error;
+    }
+}
+
+/**
+ * This API will fetch the list of stores.
+ */
+export const fetchStores = async () => {
+    try {
+        return await apiClient(`/stores/fetch`, {
+            method: 'GET',
+        });
+    } catch (error) {
+        console.log(error);
+        throw error;
+    }
+}
+
+/**
+ * This API will download the store listing Excel template.
+ * Returns a blob for file download from Laravel endpoint.
+ */
+export const fetchStoreListingTemplate = async () => {
+    try {
+        const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+        const url = `${process.env.NEXT_PUBLIC_API_URL}/storeTemplate/export`;
+
+        const response = await fetch(url, {
+            method: 'GET',
+            headers: {
+                'Accept': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                ...(token && { 'Authorization': `Bearer ${token}` }),
+            },
+            credentials: 'include',
+        });
+
+        if (!response.ok) {
+            throw new Error(`Failed to download template: ${response.statusText}`);
+        }
+
+        // Return the blob for download
+        return await response.blob();
     } catch (error) {
         console.log(error);
         throw error;
