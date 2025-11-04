@@ -56,7 +56,7 @@ export const getChangeStoreListingColumns = ({ onDelete, onEdit }: ChangeStoreLi
         ),
     },
     {
-        accessor: 'stores',
+        accessor: 'store_count',
         title: 'Stores',
         ellipsis: true,
         render: (record: any) => {

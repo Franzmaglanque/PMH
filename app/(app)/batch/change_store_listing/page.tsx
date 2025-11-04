@@ -50,6 +50,9 @@ function ChangeStoreListingContent() {
     const [storesFile, setStoresFile] = useState<File | null>(null);
     const [uploadedStores, setUploadedStores] = useState<string[]>([]);
     const [fileParseError, setFileParseError] = useState<string>('');
+    const [editStoresFile, setEditStoresFile] = useState<File | null>(null);
+    const [editUploadedStores, setEditUploadedStores] = useState<string[]>([]);
+    const [editFileParseError, setEditFileParseError] = useState<string>('');
 
     // Fetch batch records
     const { data: batchRecords, isLoading: isLoadingRecords, isFetching: isFetchingRecords } = useQuery({
@@ -106,6 +109,7 @@ function ChangeStoreListingContent() {
         setValue: setEditValue,
         reset: resetEdit,
         formState: { errors: editErrors },
+        watch: watchEdit,
     } = useForm<ChangeStoreListingInput>({
         resolver: zodResolver(changeStoreListingSchema),
         defaultValues: {
@@ -114,11 +118,16 @@ function ChangeStoreListingContent() {
             current_description: '',
             current_store_count: 0,
             action_type: undefined,
+            input_method: 'upload',
             stores: [],
+            stores_file: null,
             dept: '',
             deptnm: '',
         },
     });
+
+    // Watch edit input method
+    const editInputMethod = watchEdit('input_method');
 
     const validateBarcodeMutation = useMutation({
         mutationFn: ({ barcode, batchNumber }: { barcode: string; batchNumber: string }) =>
@@ -338,13 +347,16 @@ function ChangeStoreListingContent() {
     const onEditSubmit = (data: ChangeStoreListingInput) => {
         console.log('Edit form submitted:', data);
 
+        // If upload method, use uploaded stores instead of manual selection
+        const storesToSubmit = data.input_method === 'upload' ? editUploadedStores : data.stores;
         updateBatchRecordMutation.mutate({
+            long_name:data.current_description,
             barcode: data.barcode,
             sku: data.sku,
             dept: data.dept || '',
             deptnm: data.deptnm || '',
             action_type: data.action_type,
-            stores: data.stores,
+            stores: storesToSubmit,
             batch_number: batchNumber || '',
             request_type: PAGE_TYPE,
             record_id: editingRecord?.id,
@@ -353,12 +365,18 @@ function ChangeStoreListingContent() {
         setEditModalOpened(false);
         setEditingRecord(null);
         resetEdit();
+        setEditStoresFile(null);
+        setEditUploadedStores([]);
+        setEditFileParseError('');
     };
 
     const handleCancelEdit = () => {
         setEditModalOpened(false);
         setEditingRecord(null);
         resetEdit();
+        setEditStoresFile(null);
+        setEditUploadedStores([]);
+        setEditFileParseError('');
     };
 
     const onSubmit = (data: ChangeStoreListingInput) => {
@@ -493,6 +511,50 @@ function ChangeStoreListingContent() {
                 'Download Failed',
                 error instanceof Error ? error.message : 'Failed to download template'
             );
+        }
+    };
+
+    // Handle file upload and parsing for edit modal
+    const handleEditFileChange = async (file: File | null) => {
+        setEditStoresFile(file);
+        setEditFileParseError('');
+        setEditUploadedStores([]);
+
+        if (!file) {
+            setEditValue('stores_file', null);
+            return;
+        }
+
+        try {
+            const stores = await parseStoresFromExcel(file);
+            const { valid, invalid } = validateStoreCodes(stores);
+
+            if (invalid.length > 0) {
+                showWarningNotification(
+                    'Some Store Codes Invalid',
+                    `${invalid.length} invalid store code(s) were skipped. ${valid.length} valid stores loaded.`
+                );
+            }
+
+            if (valid.length === 0) {
+                setEditFileParseError('No valid store codes found in the file.');
+                setEditStoresFile(null);
+                setEditValue('stores_file', null);
+                return;
+            }
+
+            setEditUploadedStores(valid);
+            setEditValue('stores_file', file);
+            showSuccessNotification(
+                'File Parsed Successfully',
+                `${valid.length} store code(s) loaded from file.`
+            );
+        } catch (error) {
+            const errorMessage = error instanceof Error ? error.message : 'Failed to parse file';
+            setEditFileParseError(errorMessage);
+            setEditStoresFile(null);
+            setEditValue('stores_file', null);
+            showErrorNotification('File Parse Error', errorMessage);
         }
     };
 
@@ -1274,28 +1336,120 @@ function ChangeStoreListingContent() {
                                     />
                                 </Box>
 
-                                {/* Stores Multi-Select */}
+                                {/* Input Method */}
                                 <Box>
                                     <Text size="xs" fw={600} mb={rem(6)} c="#495057">
-                                        Select Stores <span style={{ color: '#fa5252' }}>*</span>
+                                        Input Method <span style={{ color: '#fa5252' }}>*</span>
                                     </Text>
                                     <Controller
-                                        name="stores"
+                                        name="input_method"
                                         control={editControl}
                                         render={({ field }) => (
-                                            <MultiSelect
+                                            <Radio.Group
                                                 {...field}
-                                                data={storeOptions}
-                                                placeholder="Search and select stores"
-                                                searchable
-                                                clearable
-                                                size="sm"
-                                                error={editErrors.stores?.message}
-                                                maxDropdownHeight={200}
-                                            />
+                                                error={editErrors.input_method?.message}
+                                            >
+                                                <Group mt="xs">
+                                                    <Radio value="manual" label="Manual Selection" />
+                                                    <Radio value="upload" label="Upload Excel File" />
+                                                </Group>
+                                            </Radio.Group>
                                         )}
                                     />
                                 </Box>
+
+                                {/* Manual Selection */}
+                                {editInputMethod === 'manual' && (
+                                    <Box>
+                                        <Text size="xs" fw={600} mb={rem(6)} c="#495057">
+                                            Select Stores <span style={{ color: '#fa5252' }}>*</span>
+                                        </Text>
+                                        <Controller
+                                            name="stores"
+                                            control={editControl}
+                                            render={({ field }) => (
+                                                <MultiSelect
+                                                    {...field}
+                                                    data={storeOptions}
+                                                    placeholder="Search and select stores"
+                                                    searchable
+                                                    clearable
+                                                    size="sm"
+                                                    error={editErrors.stores?.message}
+                                                    maxDropdownHeight={200}
+                                                />
+                                            )}
+                                        />
+                                        <Text size="xs" c="dimmed" mt={rem(4)}>
+                                            You can select multiple stores. Use the search box to filter stores.
+                                        </Text>
+                                        {watchEdit('stores') && watchEdit('stores')!.length > 0 && (
+                                            <Text size="xs" fw={600} mt={rem(8)} c="blue">
+                                                {watchEdit('stores')!.length} store(s) selected
+                                            </Text>
+                                        )}
+                                    </Box>
+                                )}
+
+                                {/* File Upload */}
+                                {editInputMethod === 'upload' && (
+                                    <Box>
+                                        <Group justify="space-between" align="center" mb={rem(6)}>
+                                            <Text size="xs" fw={600} c="#495057">
+                                                Upload Excel File <span style={{ color: '#fa5252' }}>*</span>
+                                            </Text>
+                                            <Anchor
+                                                size="xs"
+                                                c="blue"
+                                                onClick={handleDownloadTemplate}
+                                                style={{ cursor: 'pointer' }}
+                                            >
+                                                <Group gap={4}>
+                                                    <IconDownload size={14} />
+                                                    <span>Download Template</span>
+                                                </Group>
+                                            </Anchor>
+                                        </Group>
+                                        <FileInput
+                                            placeholder="Choose Excel or CSV file"
+                                            size="sm"
+                                            accept=".csv,.xlsx,.xls"
+                                            leftSection={<IconUpload size={18} />}
+                                            value={editStoresFile}
+                                            onChange={handleEditFileChange}
+                                            clearable
+                                            error={editFileParseError || editErrors.stores_file?.message?.toString()}
+                                            styles={{
+                                                input: {
+                                                    border: '1px solid #dee2e6',
+                                                    borderRadius: rem(4),
+                                                    fontSize: rem(14),
+                                                },
+                                            }}
+                                        />
+                                        <Text size="xs" c="dimmed" mt={rem(4)}>
+                                            Upload a CSV or Excel file with store codes in the first column
+                                        </Text>
+                                        {editUploadedStores.length > 0 && (
+                                            <Alert
+                                                icon={<IconCheck size={16} />}
+                                                color="green"
+                                                variant="light"
+                                                mt="md"
+                                            >
+                                                <Stack gap="xs">
+                                                    <Text size="sm" fw={600}>
+                                                        {editUploadedStores.length} store(s) loaded from file
+                                                    </Text>
+                                                    <Text size="xs" c="dimmed">
+                                                        Preview: {editUploadedStores.slice(0, 5).join(', ')}
+                                                        {editUploadedStores.length > 5 && ` and ${editUploadedStores.length - 5} more...`}
+                                                    </Text>
+                                                </Stack>
+                                            </Alert>
+                                        )}
+                                    </Box>
+                                )}
                             </Stack>
                         </Box>
 

@@ -19,7 +19,7 @@ export const BATCH_TYPE_SLUGS: Record<BatchType, string> = {
     'change_price_cost': 'change-price-cost',
     'change_description': 'change-description',
     'change_packaging': 'change-packaging',
-    'change_store_listing': 'change-store_listing',
+    'change_store_listing': 'change-store-listing',
     'new_item': 'new-item',
     'new_barcode': 'new-barcode',
     'new_image': 'new-image',
