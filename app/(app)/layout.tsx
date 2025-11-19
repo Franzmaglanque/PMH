@@ -32,6 +32,7 @@ import {
   IconBarcode,
   IconPhoto,
   IconBuildingStore,
+  IconPlus,
 } from '@tabler/icons-react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
@@ -164,10 +165,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               </Box>
               <div>
                 <Text size="lg" fw={700} style={{ lineHeight: 1.2 }}>
-                  Puregold
+                  PMH
                 </Text>
                 <Text size="xs" c="dimmed" style={{ lineHeight: 1.2 }}>
-                  Cash-in System
+                  Product Management Hub
                 </Text>
               </div>
             </Group>
@@ -398,6 +399,23 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 label="New Image"
                 leftSection={<IconPhoto size={18} stroke={1.5} />}
                 active={pathname === '/batch' && new URLSearchParams(window.location.search).get('request_type') === 'new_image'}
+                styles={{
+                  root: {
+                    borderRadius: rem(6),
+                    fontSize: rem(13),
+                    '&[data-active]': {
+                      backgroundColor: '#e5dbff',
+                      color: '#5f3dc4',
+                    },
+                  },
+                }}
+              />
+              <NavLink
+                component={Link}
+                href="/batch?request_type=new_item"
+                label="New Item"
+                leftSection={<IconPlus size={18} stroke={1.5} />}
+                active={pathname === '/batch' && new URLSearchParams(window.location.search).get('request_type') === 'new_item'}
                 styles={{
                   root: {
                     borderRadius: rem(6),
