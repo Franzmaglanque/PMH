@@ -4,7 +4,8 @@
       "Bash(taskkill:*)",
       "Bash(npm install:*)",
       "Bash(npm run typecheck:*)",
-      "Bash(npx tsc:*)"
+      "Bash(npx tsc:*)",
+      "Bash(npm run eslint:*)"
     ],
     "deny": [],
     "ask": []

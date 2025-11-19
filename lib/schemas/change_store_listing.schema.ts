@@ -7,10 +7,10 @@ export const changeStoreListingSchema = z.object({
   current_description: z.string().optional(),
   current_store_count: z.number().optional(),
   action_type: z.enum(['add', 'remove', 'replace'], {
-    required_error: 'Please select an action type',
+    message: 'Please select an action type',
   }),
   input_method: z.enum(['manual', 'upload'], {
-    required_error: 'Please select an input method',
+    message: 'Please select an input method',
   }),
   stores: z.array(z.string()).optional(),
   stores_file: z.any().optional(),
