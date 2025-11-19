@@ -155,3 +155,41 @@ export const validateStoreCodes = (codes: string[]): { valid: string[]; invalid:
 
   return { valid, invalid };
 };
+
+/**
+ * Generate and download Change Price/Cost Excel template
+ * Template format: BARCODE, PRICE, COST
+ *
+ * This creates an Excel file client-side with the required headers
+ * for uploading multiple price/cost changes.
+ *
+ * @example
+ * generateChangePriceCostTemplate();
+ * // Downloads: change_price_cost_template.xlsx
+ */
+export const generateChangePriceCostTemplate = () => {
+  // Create a new workbook
+  const workbook = XLSX.utils.book_new();
+
+  // Define the headers
+  const headers = ['BARCODE', 'PRICE', 'COST'];
+
+  // Create worksheet data with headers only
+  const worksheetData = [headers];
+
+  // Convert data to worksheet
+  const worksheet = XLSX.utils.aoa_to_sheet(worksheetData);
+
+  // Set column widths for better readability
+  worksheet['!cols'] = [
+    { wch: 20 }, // BARCODE column
+    { wch: 15 }, // PRICE column
+    { wch: 15 }, // COST column
+  ];
+
+  // Add the worksheet to the workbook
+  XLSX.utils.book_append_sheet(workbook, worksheet, 'Template');
+
+  // Generate Excel file and trigger download
+  XLSX.writeFile(workbook, 'change_price_cost_template.xlsx');
+};

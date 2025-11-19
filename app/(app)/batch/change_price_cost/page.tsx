@@ -34,7 +34,7 @@ import { useDebouncedInput } from '@/lib/debounce';
 import { StyledDataTable } from '@/lib/dataTableHelper';
 import { changePriceCostSchema, type ChangePriceCostInput } from '@/lib/schemas/change_price_cost.schema';
 import { getChangePriceCostColumns } from '@/components/Columns/Change_price_cost';
-import { parseStoresFromExcel, validateStoreCodes, downloadBlobFile } from '@/lib/excelHelper';
+import { parseStoresFromExcel, validateStoreCodes, downloadBlobFile, generateChangePriceCostTemplate } from '@/lib/excelHelper';
 
 function ChangePriceCostContent() {
     const PAGE_TYPE = 'change_price_cost';
@@ -575,7 +575,7 @@ function ChangePriceCostContent() {
         }
     };
 
-    // Handle template download
+    // Handle store listing template download
     const handleDownloadTemplate = async () => {
         try {
             const blob = await fetchStoreListingTemplate();
@@ -583,12 +583,28 @@ function ChangePriceCostContent() {
 
             showSuccessNotification(
                 'Template Downloaded',
-                'Excel template has been downloaded to your computer.'
+                'Store listing template has been downloaded to your computer.'
             );
         } catch (error) {
             showErrorNotification(
                 'Download Failed',
                 error instanceof Error ? error.message : 'Failed to download template'
+            );
+        }
+    };
+
+    // Handle change price/cost template download
+    const handleDownloadChangePriceCostTemplate = () => {
+        try {
+            generateChangePriceCostTemplate();
+            showSuccessNotification(
+                'Template Downloaded',
+                'Change Price/Cost template has been downloaded to your computer.'
+            );
+        } catch (error) {
+            showErrorNotification(
+                'Download Failed',
+                error instanceof Error ? error.message : 'Failed to generate template'
             );
         }
     };
@@ -1414,14 +1430,7 @@ function ChangePriceCostContent() {
                                     <Anchor
                                         size="xs"
                                         c="blue"
-                                        href="#"
-                                        onClick={(e) => {
-                                            e.preventDefault();
-                                            showInfoNotification(
-                                                'Template Coming Soon',
-                                                'Excel template download will be available soon'
-                                            );
-                                        }}
+                                        onClick={handleDownloadChangePriceCostTemplate}
                                         style={{ cursor: 'pointer' }}
                                     >
                                         <Group gap={4}>
@@ -1448,7 +1457,7 @@ function ChangePriceCostContent() {
                                     }}
                                 />
                                 <Text size="xs" c="dimmed" mt={rem(4)}>
-                                    Upload a CSV or Excel file with columns: Barcode, SKU, Description, New Price, New Cost
+                                    Upload a CSV or Excel file with columns: Barcode, Price, Cost
                                 </Text>
                                 {uploadFile && (
                                     <Alert
