@@ -19,6 +19,7 @@ type RequestType =
     | 'change_packaging'
     | 'new_barcode'
     | 'new_image'
+    | 'new_item'
     | 'change_store_listing';
 
 const VALID_REQUEST_TYPES: RequestType[] = [
@@ -28,6 +29,7 @@ const VALID_REQUEST_TYPES: RequestType[] = [
     'change_packaging',
     'new_barcode',
     'new_image',
+    'new_item',
     'change_store_listing'
 ];
 
@@ -99,6 +101,7 @@ export default function UpdateItemChangePage() {
             'change_packaging': 'Change Packaging',
             'new_barcode': 'New Barcode',
             'new_image': 'New Image',
+            'new_item': 'New Item',
             'change_store_listing': 'Change Store Listing',
         };
         return labels[type];

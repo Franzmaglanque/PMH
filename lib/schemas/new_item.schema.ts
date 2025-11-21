@@ -64,9 +64,8 @@ export const newItemSchema = z.object({
   item_type: z.enum(['Regular', 'Promo', 'Seasonal'], {
     message: 'Please select an item type',
   }),
-  listing_fee: z.enum(['yes', 'no'], {
-    message: 'Please select listing fee option',
-  }),
+  listing_fee: z.enum(['yes', 'no']).optional(),
+  item_status: z.enum(['A', 'N']).optional(), // A = Active, N = Not to be reordered (for Promo/Seasonal)
   evaluation_period: z.enum(['3_months', '6_months', '12_months']).optional(),
 
   // Marketing Support (all optional, digit only)
@@ -87,8 +86,15 @@ export const newItemSchema = z.object({
     message: 'Please select SKU type',
   }),
 
+  commission: z.string()
+    .regex(/^\d*\.?\d{0,2}$/, 'Commission must be a valid number with up to 2 decimal places')
+    .optional()
+    .or(z.literal('')),
+
   // Location
-  stores_file: z.any().optional(), // For store upload
+  stores_file: z.any().refine((file) => file !== null && file !== undefined, {
+    message: 'Please upload a stores file',
+  }), // For store upload - REQUIRED
 
   // Price/Cost
   srp: z.string()
@@ -102,15 +108,23 @@ export const newItemSchema = z.object({
   image_file: z.any().optional(), // For image upload
 }).refine(
   (data) => {
-    // If listing fee is yes, evaluation period is required
-    if (data.listing_fee === 'yes' && !data.evaluation_period) {
+    // For Regular items, listing_fee is required
+    if (data.item_type === 'Regular' && !data.listing_fee) {
+      return false;
+    }
+    // For Promo/Seasonal items, item_status is required
+    if ((data.item_type === 'Promo' || data.item_type === 'Seasonal') && !data.item_status) {
+      return false;
+    }
+    // If listing fee is yes (for Regular items), evaluation period is required
+    if (data.item_type === 'Regular' && data.listing_fee === 'yes' && !data.evaluation_period) {
       return false;
     }
     return true;
   },
   {
-    message: 'Evaluation period is required when listing fee is selected',
-    path: ['evaluation_period'],
+    message: 'Please complete all required fields based on item type',
+    path: ['item_type'],
   }
 );
 

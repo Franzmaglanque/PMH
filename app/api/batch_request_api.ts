@@ -207,6 +207,49 @@ export const fetchUOM = async () => {
 }
 
 /**
+ * This API will fetch UOM list.
+ */
+export const fetchSellingUOM = async () => {
+    try {
+        return await apiClient(`/selling-uom/fetch`, {
+            method: 'GET',
+        });
+    } catch (error) {
+        console.log(error);
+        throw error;
+    }
+}
+
+/**
+ * This API will fetch DEPARTMENT LIST.
+ */
+export const fetchDepartment = async () => {
+    try {
+        return await apiClient(`/department/fetch`, {
+            method: 'GET',
+        });
+    } catch (error) {
+        console.log(error);
+        throw error;
+    }
+}
+
+/**
+ * This API will fetch SUB-DEPARTMENT LIST.
+ * Based on supplied department
+ */
+export const fetchSubDepartment = async (params:any) => {
+    try {
+        return await apiClient(`/sub-department/fetch?dept=${params}`, {
+            method: 'GET',
+        });
+    } catch (error) {
+        console.log(error);
+        throw error;
+    }
+}
+
+/**
  * This API will fetch the list of stores.
  */
 export const fetchStores = async () => {

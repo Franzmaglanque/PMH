@@ -41,6 +41,10 @@ import {
   updateBatchRecord,
   postBatch,
   fetchStoreListingTemplate,
+  fetchUOM,
+  fetchDepartment,
+  fetchSubDepartment,
+  fetchSellingUOM
 } from '@/app/api/batch_request_api';
 import {
   showSuccessNotification,
@@ -52,6 +56,7 @@ import { StyledDataTable } from '@/lib/dataTableHelper';
 import { newItemSchema, type NewItemInput } from '@/lib/schemas/new_item.schema';
 import { getNewItemColumns } from '@/components/Columns/New_item';
 import { parseStoresFromExcel, validateStoreCodes, downloadBlobFile } from '@/lib/excelHelper';
+import { useNumericInput } from '@/lib/inputHelpers';
 
 function NewItemContent() {
   const PAGE_TYPE = 'new_item';
@@ -69,17 +74,7 @@ function NewItemContent() {
   const [storesFileParseError, setStoresFileParseError] = useState<string>('');
   const [imageFile, setImageFile] = useState<File | null>(null);
 
-  // Fetch batch records
-  const {
-    data: batchRecords,
-    isLoading: isLoadingRecords,
-    isFetching: isFetchingRecords,
-  } = useQuery({
-    queryKey: ['batchRecords', batchNumber, PAGE_TYPE],
-    queryFn: () => fetchBatchRecords(batchNumber!, PAGE_TYPE as any),
-    enabled: !!batchNumber,
-    retry: false,
-  });
+  const numericHandlers = useNumericInput();
 
   const {
     register,
@@ -115,12 +110,14 @@ function NewItemContent() {
       shelf_life: '',
       item_type: 'Regular',
       listing_fee: 'no',
+      item_status: undefined,
       evaluation_period: undefined,
       sampling_activity: '',
       push_girl: '',
       tactical_display: '',
       sku_type: 'Consign',
-      stores_file: null,
+      commission: '',
+      stores_file: undefined,
       srp: '',
       case_cost: '',
       image_file: null,
@@ -132,16 +129,51 @@ function NewItemContent() {
   const description = watch('description');
   const variant = watch('variant');
   const size = watch('size');
+  const itemType = watch('item_type');
   const listingFee = watch('listing_fee');
+  const selectedDepartment = watch('department');
+
+  
+  const { data: UOMRecords, isLoading: isUOMLoading, error:UOMError } = useQuery({
+      queryKey: ['UOMRecords'],
+      queryFn: () => fetchUOM(),
+  });
+
+  const { data: sellingUOMRecords, isLoading: isSellingUOMLoading, error:sellingUOMError } = useQuery({
+      queryKey: ['sellingUOMRecords'],
+      queryFn: () => fetchSellingUOM(),
+  });
+
+  const { data: departmentList, isLoading: isDepartmentLoading, error:departmentError } = useQuery({
+      queryKey: ['departmentRecords'],
+      queryFn: () => fetchDepartment(),
+  });
+
+  const { data: subDepartmentList, isLoading: isSubDepartmentLoading, error:subdepartmentError } = useQuery({
+      queryKey: ['subDepartmentRecords',selectedDepartment],
+      queryFn: () => fetchSubDepartment(selectedDepartment),
+      enabled: !!selectedDepartment
+  });
+
+  // Fetch batch records
+  const {
+    data: batchRecords,
+    isLoading: isLoadingRecords,
+    isFetching: isFetchingRecords,
+  } = useQuery({
+    queryKey: ['batchRecords', batchNumber, PAGE_TYPE],
+    queryFn: () => fetchBatchRecords(batchNumber!, PAGE_TYPE as any),
+    enabled: !!batchNumber,
+    retry: false,
+  });
+  
 
   // Auto-populate display_name when brand, description, variant, or size changes
   useEffect(() => {
-    if (brand && description && variant && size) {
-      const displayName = `${brand} ${description} ${variant} ${size}`.trim();
-      setValue('display_name', displayName);
-    } else {
-      setValue('display_name', '');
-    }
+    const combined = [brand, description, variant, size]
+      .filter(Boolean)
+      .join(' ');
+    setValue('display_name', combined);
   }, [brand, description, variant, size, setValue]);
 
   // Separate form for editing records
@@ -160,16 +192,15 @@ function NewItemContent() {
   const editDescription = watchEdit('description');
   const editVariant = watchEdit('variant');
   const editSize = watchEdit('size');
+  const editItemType = watchEdit('item_type');
   const editListingFee = watchEdit('listing_fee');
 
   // Auto-populate display_name in edit modal
   useEffect(() => {
-    if (editBrand && editDescription && editVariant && editSize) {
-      const displayName = `${editBrand} ${editDescription} ${editVariant} ${editSize}`.trim();
-      setEditValue('display_name', displayName);
-    } else {
-      setEditValue('display_name', '');
-    }
+    const combined = [editBrand, editDescription, editVariant, editSize]
+      .filter(Boolean)
+      .join(' ');
+    setEditValue('display_name', combined);
   }, [editBrand, editDescription, editVariant, editSize, setEditValue]);
 
   const saveBatchRecordMutation = useMutation({
@@ -322,12 +353,14 @@ function NewItemContent() {
     setEditValue('selling_uom', record.selling_uom || '');
     setEditValue('shelf_life', record.shelf_life || '');
     setEditValue('item_type', record.item_type || 'Regular');
-    setEditValue('listing_fee', record.listing_fee || 'no');
+    setEditValue('listing_fee', record.listing_fee || undefined);
+    setEditValue('item_status', record.item_status || undefined);
     setEditValue('evaluation_period', record.evaluation_period || undefined);
     setEditValue('sampling_activity', record.sampling_activity || '');
     setEditValue('push_girl', record.push_girl || '');
     setEditValue('tactical_display', record.tactical_display || '');
     setEditValue('sku_type', record.sku_type || 'Consign');
+    setEditValue('commission', record.commission || '');
     setEditValue('srp', record.srp || '');
     setEditValue('case_cost', record.case_cost || '');
     setEditModalOpened(true);
@@ -359,7 +392,12 @@ function NewItemContent() {
     formData.append('selling_uom', data.selling_uom);
     formData.append('shelf_life', data.shelf_life);
     formData.append('item_type', data.item_type);
-    formData.append('listing_fee', data.listing_fee);
+    if (data.listing_fee) {
+      formData.append('listing_fee', data.listing_fee);
+    }
+    if (data.item_status) {
+      formData.append('item_status', data.item_status);
+    }
     if (data.evaluation_period) {
       formData.append('evaluation_period', data.evaluation_period);
     }
@@ -367,6 +405,7 @@ function NewItemContent() {
     formData.append('push_girl', data.push_girl || '');
     formData.append('tactical_display', data.tactical_display || '');
     formData.append('sku_type', data.sku_type);
+    formData.append('commission', data.commission || '');
     formData.append('srp', data.srp);
     formData.append('case_cost', data.case_cost);
     formData.append('batch_number', batchNumber || '');
@@ -414,7 +453,12 @@ function NewItemContent() {
     formData.append('selling_uom', pendingFormData.selling_uom);
     formData.append('shelf_life', pendingFormData.shelf_life);
     formData.append('item_type', pendingFormData.item_type);
-    formData.append('listing_fee', pendingFormData.listing_fee);
+    if (pendingFormData.listing_fee) {
+      formData.append('listing_fee', pendingFormData.listing_fee);
+    }
+    if (pendingFormData.item_status) {
+      formData.append('item_status', pendingFormData.item_status);
+    }
     if (pendingFormData.evaluation_period) {
       formData.append('evaluation_period', pendingFormData.evaluation_period);
     }
@@ -422,6 +466,7 @@ function NewItemContent() {
     formData.append('push_girl', pendingFormData.push_girl || '');
     formData.append('tactical_display', pendingFormData.tactical_display || '');
     formData.append('sku_type', pendingFormData.sku_type);
+    formData.append('commission', pendingFormData.commission || '');
     formData.append('batch_number', batchNumber || '');
     formData.append('request_type', PAGE_TYPE);
     formData.append('srp', pendingFormData.srp);
@@ -482,7 +527,7 @@ function NewItemContent() {
     setUploadedStores([]);
 
     if (!file) {
-      setValue('stores_file', null);
+      setValue('stores_file', undefined);
       return;
     }
 
@@ -500,7 +545,7 @@ function NewItemContent() {
       if (valid.length === 0) {
         setStoresFileParseError('No valid store codes found in the file.');
         setStoresFile(null);
-        setValue('stores_file', null);
+        setValue('stores_file', undefined);
         return;
       }
 
@@ -515,7 +560,7 @@ function NewItemContent() {
         error instanceof Error ? error.message : 'Failed to parse file';
       setStoresFileParseError(errorMessage);
       setStoresFile(null);
-      setValue('stores_file', null);
+      setValue('stores_file', undefined);
       showErrorNotification('File Parse Error', errorMessage);
     }
   };
@@ -850,6 +895,10 @@ function NewItemContent() {
                     render={({ field }) => (
                       <TextInput
                         {...field}
+                        onChange={(e) => {
+                          numericHandlers.onChange(e); // Filter to numeric only
+                          field.onChange(e.target.value); // Update form state
+                        }}
                         placeholder="0.00"
                         size="md"
                         error={errors.item_length?.message}
@@ -877,6 +926,10 @@ function NewItemContent() {
                     render={({ field }) => (
                       <TextInput
                         {...field}
+                        onChange={(e) => {
+                          numericHandlers.onChange(e); // Filter to numeric only
+                          field.onChange(e.target.value); // Update form state
+                        }}
                         placeholder="0.00"
                         size="md"
                         error={errors.item_width?.message}
@@ -904,6 +957,10 @@ function NewItemContent() {
                     render={({ field }) => (
                       <TextInput
                         {...field}
+                        onChange={(e) => {
+                          numericHandlers.onChange(e); // Filter to numeric only
+                          field.onChange(e.target.value); // Update form state
+                        }}
                         placeholder="0.00"
                         size="md"
                         error={errors.item_height?.message}
@@ -931,6 +988,10 @@ function NewItemContent() {
                     render={({ field }) => (
                       <TextInput
                         {...field}
+                        onChange={(e) => {
+                          numericHandlers.onChange(e); // Filter to numeric only
+                          field.onChange(e.target.value); // Update form state
+                        }}
                         placeholder="0.00"
                         size="md"
                         error={errors.item_weight?.message}
@@ -978,6 +1039,10 @@ function NewItemContent() {
                     render={({ field }) => (
                       <TextInput
                         {...field}
+                        onChange={(e) => {
+                          numericHandlers.onChange(e); // Filter to numeric only
+                          field.onChange(e.target.value); // Update form state
+                        }}
                         placeholder="0.00"
                         size="md"
                         error={errors.case_length?.message}
@@ -1005,6 +1070,10 @@ function NewItemContent() {
                     render={({ field }) => (
                       <TextInput
                         {...field}
+                        onChange={(e) => {
+                          numericHandlers.onChange(e); // Filter to numeric only
+                          field.onChange(e.target.value); // Update form state
+                        }}
                         placeholder="0.00"
                         size="md"
                         error={errors.case_width?.message}
@@ -1032,6 +1101,10 @@ function NewItemContent() {
                     render={({ field }) => (
                       <TextInput
                         {...field}
+                        onChange={(e) => {
+                          numericHandlers.onChange(e); // Filter to numeric only
+                          field.onChange(e.target.value); // Update form state
+                        }}
                         placeholder="0.00"
                         size="md"
                         error={errors.case_height?.message}
@@ -1059,6 +1132,10 @@ function NewItemContent() {
                     render={({ field }) => (
                       <TextInput
                         {...field}
+                        onChange={(e) => {
+                          numericHandlers.onChange(e); // Filter to numeric only
+                          field.onChange(e.target.value); // Update form state
+                        }}
                         placeholder="0.00"
                         size="md"
                         error={errors.case_weight?.message}
@@ -1100,22 +1177,40 @@ function NewItemContent() {
                   <Text size="sm" fw={600} mb={rem(8)} c="#495057">
                     UNIT OF MEASURE (UOM) <span style={{ color: 'red' }}>*</span>
                   </Text>
-                  <Controller
+                 <Controller
                     name="uom"
                     control={control}
                     render={({ field }) => (
-                      <TextInput
-                        {...field}
-                        placeholder="Enter UOM (e.g., PCS, BOX)"
-                        size="md"
-                        error={errors.uom?.message}
-                        styles={{
-                          input: {
-                            border: '1px solid #dee2e6',
-                            borderRadius: rem(4),
-                            fontSize: rem(14),
-                          },
-                        }}
+                      <Select
+                          {...field}
+                          value={field.value || null}
+                          placeholder={isUOMLoading ? "Loading..." : "Select unit of measure"}
+                          size="md"
+                          data={UOMRecords?.data.map((record:any) => ({
+                              value: record.IUNMSR,
+                              label: `${record.IUNMSR} - ${record.IUMDSC}`
+                          })) || []}
+                          searchable
+                          clearable
+                          error={errors.uom?.message}
+                          disabled={isUOMLoading}
+                          onChange={(value)=> {
+                              field.onChange(value);
+                              const selectedRecord = UOMRecords?.data.find(
+                                  (record:any) => record.IUNMSR == value
+                              )
+                              if(selectedRecord){
+                                  setValue('standard_pack',selectedRecord.IBYFAC)
+                              }
+
+                          }}
+                          styles={{
+                              input: {
+                                  border: '1px solid #dee2e6',
+                                  borderRadius: rem(4),
+                                  fontSize: rem(14),
+                              },
+                          }}
                       />
                     )}
                   />
@@ -1124,27 +1219,34 @@ function NewItemContent() {
 
               <Grid.Col span={{ base: 12, md: 6 }}>
                 <Box>
-                  <Text size="sm" fw={600} mb={rem(8)} c="#495057">
-                    STANDARD PACK <span style={{ color: 'red' }}>*</span>
-                  </Text>
+                  <Group gap={rem(6)} mb={rem(8)}>
+                      <Text size="sm" fw={600} c="#495057">
+                          STANDARD PACK
+                      </Text>
+                      <Badge size="xs" color="gray" variant="light">Auto-filled</Badge>
+                  </Group>
                   <Controller
-                    name="standard_pack"
-                    control={control}
-                    render={({ field }) => (
-                      <TextInput
-                        {...field}
-                        placeholder="Enter standard pack quantity"
-                        size="md"
-                        error={errors.standard_pack?.message}
-                        styles={{
-                          input: {
-                            border: '1px solid #dee2e6',
-                            borderRadius: rem(4),
-                            fontSize: rem(14),
-                          },
-                        }}
-                      />
-                    )}
+                      name="standard_pack"
+                      control={control}
+                      render={({ field }) => (
+                          <TextInput
+                              {...field}
+                              placeholder="Auto-filled based on UOM selection"
+                              size="md"
+                              readOnly
+                              error={errors.standard_pack?.message}
+                              styles={{
+                                  input: {
+                                      border: '1px solid #dee2e6',
+                                      borderRadius: rem(4),
+                                      fontSize: rem(14),
+                                      backgroundColor: '#f0f9ff',
+                                      color: '#0c4a6e',
+                                      fontWeight: 500,
+                                  },
+                              }}
+                          />
+                      )}
                   />
                 </Box>
               </Grid.Col>
@@ -1158,18 +1260,26 @@ function NewItemContent() {
                     name="department"
                     control={control}
                     render={({ field }) => (
-                      <TextInput
-                        {...field}
-                        placeholder="Enter department"
-                        size="md"
-                        error={errors.department?.message}
-                        styles={{
-                          input: {
-                            border: '1px solid #dee2e6',
-                            borderRadius: rem(4),
-                            fontSize: rem(14),
-                          },
-                        }}
+                      <Select
+                          {...field}
+                          value={field.value || null}
+                          placeholder={isDepartmentLoading ? "Loading..." : "Select Department"}
+                          size="md"
+                          data={departmentList?.data.map((record:any) => ({
+                              value: record.IDEPT,
+                              label: `${record.DEPT_DESC}`
+                          })) || []}
+                          searchable
+                          clearable
+                          error={errors.department?.message}
+                          disabled={isDepartmentLoading}
+                          styles={{
+                              input: {
+                                  border: '1px solid #dee2e6',
+                                  borderRadius: rem(4),
+                                  fontSize: rem(14),
+                              },
+                          }}
                       />
                     )}
                   />
@@ -1185,18 +1295,26 @@ function NewItemContent() {
                     name="sub_department"
                     control={control}
                     render={({ field }) => (
-                      <TextInput
-                        {...field}
-                        placeholder="Enter sub department"
-                        size="md"
-                        error={errors.sub_department?.message}
-                        styles={{
-                          input: {
-                            border: '1px solid #dee2e6',
-                            borderRadius: rem(4),
-                            fontSize: rem(14),
-                          },
-                        }}
+                      <Select
+                          {...field}
+                          value={field.value || null}
+                          placeholder={isSubDepartmentLoading ? "Loading..." : "Select Sub Department"}
+                          size="md"
+                          data={subDepartmentList?.data.subDepartment.map((record:any) => ({
+                              value: record.ISDEPT,
+                              label: `${record.DEPT_DESC}`
+                          })) || []}
+                          searchable
+                          clearable
+                          error={errors.department?.message}
+                          disabled={isSubDepartmentLoading}
+                          styles={{
+                              input: {
+                                  border: '1px solid #dee2e6',
+                                  borderRadius: rem(4),
+                                  fontSize: rem(14),
+                              },
+                          }}
                       />
                     )}
                   />
@@ -1212,18 +1330,26 @@ function NewItemContent() {
                     name="selling_uom"
                     control={control}
                     render={({ field }) => (
-                      <TextInput
-                        {...field}
-                        placeholder="Enter selling UOM"
-                        size="md"
-                        error={errors.selling_uom?.message}
-                        styles={{
-                          input: {
-                            border: '1px solid #dee2e6',
-                            borderRadius: rem(4),
-                            fontSize: rem(14),
-                          },
-                        }}
+                      <Select
+                          {...field}
+                          value={field.value || null}
+                          placeholder={isSellingUOMLoading ? "Loading..." : "Select Selling UOM"}
+                          size="md"
+                          data={sellingUOMRecords?.data.map((record:any) => ({
+                              value: record.IUNMSR,
+                              label: `${record.IUNMSR} - ${record.IUMDSC}`
+                          })) || []}
+                          searchable
+                          clearable
+                          error={errors.selling_uom?.message}
+                          disabled={isSellingUOMLoading}
+                          styles={{
+                              input: {
+                                  border: '1px solid #dee2e6',
+                                  borderRadius: rem(4),
+                                  fontSize: rem(14),
+                              },
+                          }}
                       />
                     )}
                   />
@@ -1241,6 +1367,10 @@ function NewItemContent() {
                     render={({ field }) => (
                       <TextInput
                         {...field}
+                        onChange={(e) => {
+                          numericHandlers.onChange(e); // Filter to numeric only
+                          field.onChange(e.target.value); // Update form state
+                        }}
                         placeholder="Enter shelf life in days"
                         size="md"
                         error={errors.shelf_life?.message}
@@ -1309,38 +1439,75 @@ function NewItemContent() {
                 </Box>
               </Grid.Col>
 
-              <Grid.Col span={{ base: 12, md: 6 }}>
-                <Box>
-                  <Text size="sm" fw={600} mb={rem(8)} c="#495057">
-                    LISTING FEE <span style={{ color: 'red' }}>*</span>
-                  </Text>
-                  <Controller
-                    name="listing_fee"
-                    control={control}
-                    render={({ field }) => (
-                      <Select
-                        {...field}
-                        placeholder="Select listing fee option"
-                        size="md"
-                        data={[
-                          { value: 'yes', label: 'Yes' },
-                          { value: 'no', label: 'No' },
-                        ]}
-                        error={errors.listing_fee?.message}
-                        styles={{
-                          input: {
-                            border: '1px solid #dee2e6',
-                            borderRadius: rem(4),
-                            fontSize: rem(14),
-                          },
-                        }}
-                      />
-                    )}
-                  />
-                </Box>
-              </Grid.Col>
+              {/* Show Listing Fee for Regular items */}
+              {itemType === 'Regular' && (
+                <Grid.Col span={{ base: 12, md: 6 }}>
+                  <Box>
+                    <Text size="sm" fw={600} mb={rem(8)} c="#495057">
+                      LISTING FEE <span style={{ color: 'red' }}>*</span>
+                    </Text>
+                    <Controller
+                      name="listing_fee"
+                      control={control}
+                      render={({ field }) => (
+                        <Select
+                          {...field}
+                          placeholder="Select listing fee option"
+                          size="md"
+                          data={[
+                            { value: 'yes', label: 'Yes' },
+                            { value: 'no', label: 'No' },
+                          ]}
+                          error={errors.listing_fee?.message}
+                          styles={{
+                            input: {
+                              border: '1px solid #dee2e6',
+                              borderRadius: rem(4),
+                              fontSize: rem(14),
+                            },
+                          }}
+                        />
+                      )}
+                    />
+                  </Box>
+                </Grid.Col>
+              )}
 
-              {listingFee === 'yes' && (
+              {/* Show Item Status for Promo/Seasonal items */}
+              {(itemType === 'Promo' || itemType === 'Seasonal') && (
+                <Grid.Col span={{ base: 12, md: 6 }}>
+                  <Box>
+                    <Text size="sm" fw={600} mb={rem(8)} c="#495057">
+                      ITEM STATUS <span style={{ color: 'red' }}>*</span>
+                    </Text>
+                    <Controller
+                      name="item_status"
+                      control={control}
+                      render={({ field }) => (
+                        <Select
+                          {...field}
+                          placeholder="Select item status"
+                          size="md"
+                          data={[
+                            { value: 'A', label: 'A - Active' },
+                            { value: 'N', label: 'N - Not to be reordered' },
+                          ]}
+                          error={errors.item_status?.message}
+                          styles={{
+                            input: {
+                              border: '1px solid #dee2e6',
+                              borderRadius: rem(4),
+                              fontSize: rem(14),
+                            },
+                          }}
+                        />
+                      )}
+                    />
+                  </Box>
+                </Grid.Col>
+              )}
+
+              {itemType === 'Regular' && listingFee === 'yes' && (
                 <Grid.Col span={{ base: 12, md: 6 }}>
                   <Box>
                     <Text size="sm" fw={600} mb={rem(8)} c="#495057">
@@ -1387,8 +1554,12 @@ function NewItemContent() {
                         render={({ field }) => (
                           <TextInput
                             {...field}
-                            placeholder="Sampling Activity"
+                            placeholder="Sampling Activity # of Stores"
                             size="md"
+                            onChange={(e) => {
+                              numericHandlers.onChange(e); // Filter to numeric only
+                              field.onChange(e.target.value); // Update form state
+                            }}
                             error={errors.sampling_activity?.message}
                             styles={{
                               input: {
@@ -1408,8 +1579,12 @@ function NewItemContent() {
                         render={({ field }) => (
                           <TextInput
                             {...field}
-                            placeholder="Push Girl"
+                            placeholder="Push Girl # of Stores"
                             size="md"
+                            onChange={(e) => {
+                              numericHandlers.onChange(e); // Filter to numeric only
+                              field.onChange(e.target.value); // Update form state
+                            }}
                             error={errors.push_girl?.message}
                             styles={{
                               input: {
@@ -1429,8 +1604,12 @@ function NewItemContent() {
                         render={({ field }) => (
                           <TextInput
                             {...field}
-                            placeholder="Tactical Display"
+                            placeholder="Tactical Display # of Stores"
                             size="md"
+                            onChange={(e) => {
+                              numericHandlers.onChange(e); // Filter to numeric only
+                              field.onChange(e.target.value); // Update form state
+                            }}
                             error={errors.tactical_display?.message}
                             styles={{
                               input: {
@@ -1478,6 +1657,41 @@ function NewItemContent() {
                   />
                 </Box>
               </Grid.Col>
+
+              <Grid.Col span={{ base: 12, md: 6 }}>
+                <Box>
+                  <Text size="sm" fw={600} mb={rem(8)} c="#495057">
+                    COMMISSION (Optional)
+                  </Text>
+                  <Controller
+                    name="commission"
+                    control={control}
+                    render={({ field }) => (
+                      <TextInput
+                        {...field}
+                        placeholder="0.00"
+                        size="md"
+                        leftSection={<Text size="sm" fw={600} c="orange">%</Text>}
+                        error={errors.commission?.message}
+                        onChange={(e) => {
+                          const value = e.target.value;
+                          // Allow digits and one decimal point with up to 2 decimals
+                          if (/^\d*\.?\d{0,2}$/.test(value) || value === '') {
+                            field.onChange(value);
+                          }
+                        }}
+                        styles={{
+                          input: {
+                            border: '1px solid #dee2e6',
+                            borderRadius: rem(4),
+                            fontSize: rem(14),
+                          },
+                        }}
+                      />
+                    )}
+                  />
+                </Box>
+              </Grid.Col>
             </Grid>
           </Box>
 
@@ -1501,7 +1715,7 @@ function NewItemContent() {
             <Box>
               <Group justify="space-between" align="center" mb={rem(8)}>
                 <Text size="sm" fw={600} c="#495057">
-                  UPLOAD STORES FILE (Optional)
+                  UPLOAD STORES FILE <span style={{ color: 'red' }}>*</span>
                 </Text>
                 <Anchor
                   size="xs"
