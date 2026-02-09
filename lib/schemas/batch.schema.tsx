@@ -48,3 +48,32 @@ export const changeItemStatusSchema = z.object({
 });
 
 export type ChangeItemStatusInput = z.infer<typeof changeItemStatusSchema>;
+
+// Store listing entry schema
+export const storeListingEntrySchema = z.object({
+  store_code: z.string().min(1, 'Store code is required'),
+  store_name: z.string().min(1, 'Store name is required'),
+  action: z.enum(['add', 'deduct'], { message: 'Action must be either add or deduct' }),
+});
+
+// Change Store Listing schema
+export const changeStoreListingSchema = z.object({
+  barcode: z.string()
+    .min(1, 'UPC/Barcode is required')
+    .regex(/^\d+$/, 'UPC must contain only digits'),
+
+  sku: z.string()
+    .min(1, 'SKU is required'),
+
+  long_name: z.string()
+    .min(1, 'Description is required'),
+
+  dept: z.string().optional(),
+  deptnm: z.string().optional(),
+
+  store_listings: z.array(storeListingEntrySchema)
+    .min(1, 'At least one store listing is required'),
+});
+
+export type StoreListingEntry = z.infer<typeof storeListingEntrySchema>;
+export type ChangeStoreListingInput = z.infer<typeof changeStoreListingSchema>;
