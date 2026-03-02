@@ -2,14 +2,15 @@
 
 import { Container, Title, Button, TextInput, Select, Table, Text, Group, ActionIcon, Modal, Badge } from '@mantine/core';
 import { IconPlus, IconSearch, IconChevronDown } from '@tabler/icons-react';
-import { useState, useTransition, useEffect } from 'react';
+import { useState, useTransition, useEffect, Suspense } from 'react';
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { fetchBatchRecords } from '../../api/batch_table_api';
 import 'mantine-datatable/styles.css';
-import { DataTable } from 'mantine-datatable';
+// import { DataTable } from 'mantine-datatable';
 import { showSuccessNotification, showErrorNotification, showWarningNotification } from '@/lib/notifications';
 import { generateBatch } from '../../api/batch_table_api';
 import { useRouter, useSearchParams } from 'next/navigation';
+import dynamic from 'next/dynamic';
 
 // Valid request types based on batch management options
 type RequestType =
@@ -32,8 +33,16 @@ const VALID_REQUEST_TYPES: RequestType[] = [
     'new_item',
     'change_store_listing'
 ];
+// 1. DYNAMIC IMPORT: This prevents the DataTable from trying to render on the Node server
+    const DataTable = dynamic(
+        () => import('mantine-datatable').then((mod) => mod.DataTable),
+        { ssr: false }
+    );
 
-export default function UpdateItemChangePage() {
+// export default function UpdateItemChangePage() {
+function UpdateItemChangeContent() {
+
+    
     const [filter, setFilter] = useState('');
     const [pageSize, setPageSize] = useState('10');
     const [modalOpened, setModalOpened] = useState(false);
@@ -69,6 +78,11 @@ export default function UpdateItemChangePage() {
                 'Batch Created Successfully',
                 `Batch #${data.batch_number || 'N/A'} has been created`
             );
+
+            // 2. SAFETY CHECK ADDED BACK HERE
+            if (typeof window !== 'undefined') {
+                sessionStorage.setItem('current_batch_number', data.batch_number);
+            }
             // Store batch number in sessionStorage to pass as state
             sessionStorage.setItem('current_batch_number', data.batch_number);
             // Navigate to change_item_status page
@@ -225,5 +239,13 @@ export default function UpdateItemChangePage() {
                 }}
             />
         </>
+    );
+}
+
+export default function UpdateItemChangePage() {
+    return (
+        <Suspense fallback={<Text>Loading...</Text>}>
+            <UpdateItemChangeContent />
+        </Suspense>
     );
 }
